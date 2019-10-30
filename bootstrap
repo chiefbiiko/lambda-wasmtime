@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-# TODO: get rid of all pipes
 set -Eeuo pipefail
 
 RUNTIME_API_BASE_URL=http://$AWS_LAMBDA_RUNTIME_API/2018-06-01
-FILE=$LAMBDA_TASK_ROOT/$(echo $_HANDLER | cut -d. -f1)
+# FILE=$LAMBDA_TASK_ROOT/$(echo $_HANDLER | cut -d. -f1)
+FILE=${_HANDLER%%.*}
 HANDLER=$(echo $_HANDLER | cut -d. -f2)
 HEADERS_DUMP=$LAMBDA_TASK_ROOT/headers.txt
 
@@ -23,9 +23,10 @@ WASMTIME=$(which wasmtime)
 while :; do
   # get the next event and metadata
   EVENT=$(curl -fsSLD $HEADERS_DUMP $RUNTIME_API_BASE_URL/runtime/invocation/next)
-  HEADERS=$(cat $HEADERS_DUMP)
-  REQUEST_ID=$(grep -Fi Lambda-Runtime-Aws-Request-Id $HEADERS | cut -d: -f2 | xargs)
-
+  # HEADERS=$(cat $HEADERS_DUMP)
+  # REQUEST_ID=$(grep -Fi Lambda-Runtime-Aws-Request-Id $HEADERS_DUMP | cut -d: -f2 | xargs)
+  REQUEST_ID=$(grep -ioP "(?<=Lambda-Runtime-Aws-Request-Id: )(\S*)" $HEADERS_DUMP)
+  _X_AMZN_TRACE_ID=$(grep -ioP "(?<=Lambda-Runtime-Trace-Id: )(\S*)" $HEADERS_DUMP)
   # TODO: create a context (json) object with env vars and else
 
   # invoke the handler
