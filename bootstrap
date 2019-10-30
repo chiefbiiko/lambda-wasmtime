@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+RUNTIME_API_BASE_URL=http://$AWS_LAMBDA_RUNTIME_API/2018-06-01
+FILE=$LAMBDA_TASK_ROOT/$(echo $_HANDLER | cut -d. -f1)
+HANDLER=$(echo $_HANDLER | cut -d. -f2)
+HEADERS_DUMP=$LAMBDA_TASK_ROOT/headers.txt
+
+## init tasks
+# trap cleanup
+trap "rm $HEADERS_DUMP" EXIT
+
+# install wasmtime
+curl https://wasmtime.dev/install.sh -sSf | bash
+
+WASMTIME=$(which wasmtime)
+
+# TODO: post possible errors 2 /runtime/invocation/AwsRequestId/error
+
+## event loop
+while :; do
+  # get the next event and metadata
+  EVENT=$(curl -fsSLD $HEADERS_DUMP $RUNTIME_API_BASE_URL/runtime/invocation/next)
+  HEADERS=$(cat $HEADERS_DUMP)
+  REQUEST_ID=$(grep -Fi Lambda-Runtime-Aws-Request-Id $HEADERS | cut -d: -f2 | xargs)
+
+  # TODO: create a context (json) object with env vars and else
+
+  # invoke the handler :TODO: allow passing additional args, and pass env vars
+  # also set the _X_AMZN_TRACE_ID env var for the X-Ray SDK
+  _X_AMZN_TRACE_ID=$(grep -Fi Lambda-Runtime-Trace-Id $HEADERS | cut -d: -f2 | xargs)
+  RETURN_VALUE=$($WASMTIME --invoke=$HANDLER $FILE)
+
+  # TODO: post possible errors 2 /runtime/invocation/AwsRequestId/error
+
+  # post the return value :TODO: get a wasm return value somehow
+  curl -fsSLX POST $RUNTIME_API_BASE_URL/runtime/invocation/$REQUEST_ID/response -d $RETURN_VALUE
+done
