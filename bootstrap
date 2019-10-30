@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# TODO: get rid of all pipes
 set -Eeuo pipefail
 
 RUNTIME_API_BASE_URL=http://$AWS_LAMBDA_RUNTIME_API/2018-06-01
