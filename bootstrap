@@ -1,34 +1,40 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bash -o pipefail
 
-set -Eeuo pipefail
+api=http://$AWS_LAMBDA_RUNTIME_API/2018-06-01
+file=${_HANDLER%%.*}
+handler=${_HANDLER##*.}
+headers=$LAMBDA_TASK_ROOT/headers.txt
+wasmtime=$LAMBDA_TASK_ROOT/wasmtime
 
-RUNTIME_API_BASE_URL=http://$AWS_LAMBDA_RUNTIME_API/2018-06-01
-FILE=${_HANDLER%%.*}
-HANDLER=${_HANDLER##*.}
-HEADERS_DUMP=$LAMBDA_TASK_ROOT/headers.txt
+trap "rm $headers" EXIT
 
-trap "rm $HEADERS_DUMP" EXIT
+tarball=$(awk '/^__TARBALL__/ {print NR + 1;exit 0;}' $0)
+tail -n+$tarball $0 | tar --extract --xz --directory=$LAMBDA_TASK_ROOT --strip-components=1 --wildcards "*/wasmtime"
 
-# TODO: install from tailing tarball
-curl -fsS https://wasmtime.dev/install.sh | bash
-WASMTIME=$(which wasmtime)
+if [[ $? -ne 0 ]]; then
+  curl -fsSLX POST $api/runtime/init/error -d '{"error":"runtime initialization failed"}'
+  exit 1
+fi
 
-# TODO: post possible errors 2 /runtime/invocation/AwsRequestId/error
+chmod 700 $wasmtime
 
 while :; do
-  EVENT=$(curl -fsSLD $HEADERS_DUMP $RUNTIME_API_BASE_URL/runtime/invocation/next)
-  REQUEST_ID=$(grep -ioP "(?<=Lambda-Runtime-Aws-Request-Id: )(\S*)" $HEADERS_DUMP)
-  _X_AMZN_TRACE_ID=$(grep -ioP "(?<=Lambda-Runtime-Trace-Id: )(\S*)" $HEADERS_DUMP)
+  event=$(curl -fsSLD $headers $api/runtime/invocation/next)
+  request_id=$(grep -ioP "(?<=Lambda-Runtime-Aws-Request-Id: )(\S*)" $headers)
+  _x_amzn_trace_id=$(grep -ioP "(?<=Lambda-Runtime-Trace-Id: )(\S*)" $headers)
   
   # TODO: create a context (json) object with env vars and else
 
   # invoke the handler
   # TODO: allow passing additional args, and pass env vars, event n context
   # also set the _X_AMZN_TRACE_ID env var for the X-Ray SDK
-  # strip the warning from return value
-  RETURN_VALUE=$($WASMTIME --invoke=$HANDLER $FILE)
+  return_value=$($wasmtime --invoke=$handler $file)
 
-  # TODO: post possible errors 2 /runtime/invocation/AwsRequestId/error
-
-  curl -fsSLX POST $RUNTIME_API_BASE_URL/runtime/invocation/$REQUEST_ID/response -d $RETURN_VALUE
+  if [[ $? -ne 0 ]]; then
+    curl -fsSLX POST $api/runtime/invocation/$request_id/error -d '{"error":"handler execution failed"}'
+  else
+    curl -fsSLX POST $api/runtime/invocation/$request_id/response -d $return_value
+  fi
 done
+
+__TARBALL__
