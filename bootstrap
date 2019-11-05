@@ -1,35 +1,35 @@
 #!/bin/bash
 
-set -o pipefail
+set -uo pipefail
 
-LAYER_VERSION=6
-API=http://$AWS_LAMBDA_RUNTIME_API/2018-06-01/runtime
-FILE=${_HANDLER%%.*}
-HANDLER=${_HANDLER##*.}
+LAYER_VERSION=9
+API="http://$AWS_LAMBDA_RUNTIME_API/2018-06-01/runtime"
+FILE="${_HANDLER%%.*}"
+HANDLER="${_HANDLER##*.}"
 WARNING="warning: using \`--render\` with a function that returns values is experimental and may break in the future"
 
 echo -e "layer version $LAYER_VERSION\n\nenv vars\n$(env)\n\nwasmtime version"
 /opt/bin/wasmtime --version
 
 if [[ $? -ne 0 ]]; then
-  curl -fsSLX POST $API/init/error -d '{"error":"runtime initialization failed"}'
+  curl -fsSLX POST "$API/init/error" -d '{"error":"runtime initialization failed"}'
   exit 1
 fi
 
 while :; do
-  response=$(curl -fsSLD - $API/invocation/next)
+  response=$(curl -fsSLD - "$API"/invocation/next)
   body=${response#*\\n\\n}
   headers=${response%"\n\n$body"}
-  request_id=$(grep -ioP "(?<=Lambda-Runtime-Aws-Request-Id: )(\S*)" <<< $headers)
-  _x_amzn_trace_id=$(grep -ioP "(?<=Lambda-Runtime-Trace-Id: )(\S*)" <<< $headers)
+  request_id=$(grep -ioP "(?<=Lambda-Runtime-Aws-Request-Id: )(\S*)" <<< "$headers")
+  # _x_amzn_trace_id=$(grep -ioP "(?<=Lambda-Runtime-Trace-Id: )(\S*)" <<< "$headers")
 
   # TODO: pass env vars, event n context, allow setting meta wasmtime flags
   # also set the _X_AMZN_TRACE_ID env var for the X-Ray SDK
-  result=$(/opt/bin/wasmtime --invoke=$HANDLER $LAMBDA_TASK_ROOT/$FILE.wasm 2>&1 | grep -v $WARNING)
+  result=$(/opt/bin/wasmtime --disable-cache --invoke="$HANDLER" "$LAMBDA_TASK_ROOT/$FILE.wasm" 2>&1 | grep -v "$WARNING")
 
   if [[ $? -eq 0 ]]; then
-    curl -fsSLX POST $API/invocation/$request_id/response -d $result
+    curl -fsSLX POST "$API/invocation/$request_id/response" -d "$result"
   else
-    curl -fsSLX POST $API/invocation/$request_id/error -d $result
+    curl -fsSLX POST "$API/invocation/$request_id/error" -d "$result"
   fi
 done
