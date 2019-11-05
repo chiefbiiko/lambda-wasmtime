@@ -2,7 +2,7 @@
 
 set -uo pipefail
 
-LAYER_VERSION=10
+LAYER_VERSION=10 # TODO: replace with current git tag
 API="http://$AWS_LAMBDA_RUNTIME_API/2018-06-01/runtime"
 FILE="$LAMBDA_TASK_ROOT/${_HANDLER%%.*}.wasm"
 HANDLER="${_HANDLER##*.}"
