@@ -10,7 +10,7 @@ WARNING="warning: using \`--render\` with a function that returns values is expe
 ENV_VARS=""
 
 while read -r kv; do
-    ENV_VARS="$ENV_VARS --env=$kv"
+  ENV_VARS="$ENV_VARS --env=$kv"
 done <<< $(env)
 
 echo -e "layer version\n$LAYER_VERSION\n\nenv vars\n$(env)\n\nwasmtime version"
