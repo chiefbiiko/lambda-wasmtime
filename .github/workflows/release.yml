@@ -14,9 +14,9 @@ jobs:
         uses: actions/checkout@v1.0.0
         with:
           ref: ${{ github.ref }}
-      - name: shellcheck
-        run: shellcheck ./bootstrap
-      - name: bundle
+      - name: shellcheck bootstrap script
+        run: shellcheck -e SC2153,SC2181 ./bootstrap
+      - name: bundle lambda runtime layer
         run: |
           chmod 755 ./bootstrap ./bin/wasmtime; \
           zip -r ./runtime.zip ./bootstrap ./bin
