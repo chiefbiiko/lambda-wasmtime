@@ -14,11 +14,16 @@ jobs:
         uses: actions/checkout@v1.0.0
         with:
           ref: ${{ github.ref }}
+      - name: format bootstrap script
+        run: |
+          curl -fsSL "https://github.com/mvdan/sh/releases/download/v2.6.4/shfmt_v2.6.4_linux_amd64" > /tmp/shfmt && \ 
+          chmod 755 /tmp/shfmt && \
+          /tmp/shfmt -i 2 -ci ./bootstrap
       - name: shellcheck bootstrap script
         run: shellcheck -e SC2153,SC2181 ./bootstrap
       - name: bundle lambda runtime layer
         run: |
-          chmod 755 ./bootstrap ./bin/wasmtime; \
+          chmod 755 ./bootstrap ./bin/wasmtime && \ 
           zip -r ./runtime.zip ./bootstrap ./bin
       - name: create release
         id: create_release
