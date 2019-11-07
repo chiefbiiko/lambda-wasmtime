@@ -24,7 +24,7 @@ jobs:
       - name: bundle lambda runtime layer
         run: |
           chmod 755 ./bootstrap ./bin/wasmtime && \ 
-          zip -r ./runtime.zip ./bootstrap ./bin
+          zip -r ./lambda_wasmtime.zip ./bootstrap ./bin
       - name: create release
         id: create_release
         uses: actions/create-release@v1.0.0
@@ -41,6 +41,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} 
-          asset_path: ./runtime.zip
-          asset_name: runtime.zip
+          asset_path: ./lambda_wasmtime.zip
+          asset_name: lambda_wasmtime.zip
           asset_content_type: application/zip
