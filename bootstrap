@@ -2,6 +2,12 @@
 
 set -uo pipefail
 
+post_init_error() {
+  curl -fsSLX POST "$API/init/error" -d '{"error":"runtime initialization failed"}'
+}
+
+trap post_init_error EXIT
+
 API="http://$AWS_LAMBDA_RUNTIME_API/2018-06-01/runtime"
 FILE="$LAMBDA_TASK_ROOT/${_HANDLER%%.*}.wasm"
 HANDLER="${_HANDLER##*.}"
@@ -11,9 +17,11 @@ PREP_ENV_VARS=$(paste -sd "," <<< "$(env)")
 printf "env vars\n%s\nwasmtime version " "$(env)"
 
 if ! /opt/bin/wasmtime --version; then
-  curl -fsSLX POST "$API/init/error" -d '{"error":"runtime initialization failed"}'
   exit 1
 fi
+
+trap - EXIT
+set +u
 
 while :; do
   response="$(curl -fsSLD - "$API/invocation/next")"
