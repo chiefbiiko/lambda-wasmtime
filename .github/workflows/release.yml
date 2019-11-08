@@ -21,7 +21,7 @@ jobs:
       - name: format bootstrap script
         run: $(curl -fsSL https://raw.githubusercontent.com/chiefbiiko/shfmt-install/master/install.sh | sh) -i 2 -ci ./bootstrap > ./bootstrap
       - name: shellcheck bootstrap script
-        run: shellcheck -e SC2153,SC2181 ./bootstrap
+        run: shellcheck ./bootstrap
       - name: bundle lambda runtime layer
         run: |
           chmod 755 ./bootstrap ./bin/wasmtime
