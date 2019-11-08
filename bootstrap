@@ -2,7 +2,7 @@
 
 set -uo pipefail
 
-LAYER_VERSION=10 # TODO: replace with current git tag
+LAYER_VERSION=__PLACEHOLDER__
 API="http://$AWS_LAMBDA_RUNTIME_API/2018-06-01/runtime"
 FILE="$LAMBDA_TASK_ROOT/${_HANDLER%%.*}.wasm"
 HANDLER="${_HANDLER##*.}"
@@ -21,10 +21,10 @@ while :; do
   response=$(curl -fsSLD - "$API/invocation/next")
   event="${response#*\\n\\n}"
   headers="${response%%\\n\\n*}"
+  _x_amzn_trace_id=$(grep -ioP "(?<=Lambda-Runtime-Trace-Id: )(\S*)" <<< "$headers")
   request_id=$(grep -ioP "(?<=Lambda-Runtime-Aws-Request-Id: )(\S*)" <<< "$headers")
   function_arn=$(grep -ioP "(?<=Lambda-Runtime-Invoked-Function-Arn: )(\S*)" <<< "$headers")
   deadline_ms=$(grep -ioP "(?<=Lambda-Runtime-Deadline-Ms: )(\S*)" <<< "$headers")
-  _x_amzn_trace_id=$(grep -ioP "(?<=Lambda-Runtime-Trace-Id: )(\S*)" <<< "$headers")
 
   # TODO: pass context
   result=$(/opt/bin/wasmtime --disable-cache --env="$PREP_ENV_VARS,_x_amzn_trace_id=$_x_amzn_trace_id" --invoke="$HANDLER" "$FILE" "$event" 2>&1 | grep -v "$WARNING")
