@@ -15,10 +15,7 @@ jobs:
         with:
           ref: ${{ github.ref }}
       - name: format bootstrap script
-        run: |
-          curl -fsSL "https://github.com/mvdan/sh/releases/download/v2.6.4/shfmt_v2.6.4_linux_amd64" > /tmp/shfmt && \ 
-          chmod 755 /tmp/shfmt && \
-          /tmp/shfmt -i 2 -ci ./bootstrap
+        run: $(curl -fsSL "https://raw.githubusercontent.com/chiefbiiko/shfmt-install/master/install.sh" | sh -s "$GITHUB_WORKSPACE") -i 2 -ci ./bootstrap
       - name: shellcheck bootstrap script
         run: shellcheck -e SC2153,SC2181 ./bootstrap
       - name: bundle lambda runtime layer
