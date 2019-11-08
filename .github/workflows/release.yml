@@ -14,10 +14,6 @@ jobs:
         uses: actions/checkout@v1.0.0
         with:
           ref: ${{ github.ref }}
-      - name: hardcode layer version
-        run: |
-          TAG=$(grep -oE "v[0-9]+\.[0-9]+\.[0-9]+" <<< "${{ github.ref }}")
-          sed -i "s/__PLACEHOLDER__/${TAG}/" ./bootstrap
       - name: format bootstrap script
         run: $(curl -fsSL https://raw.githubusercontent.com/chiefbiiko/shfmt-install/master/install.sh | sh) -i 2 -ci ./bootstrap > ./bootstrap
       - name: shellcheck bootstrap script
