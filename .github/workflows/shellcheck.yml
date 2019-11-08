@@ -1,0 +1,15 @@
+name: shellcheck
+
+on: push
+
+jobs:
+  check:
+    name: shellcheck the bootstrap script
+    runs-on: ubuntu-latest
+    steps:
+      - name: clone repo@${{ github.ref }}
+        uses: actions/checkout@v1.0.0
+        with:
+          ref: ${{ github.ref }}
+      - name: shellcheck bootstrap script
+        run: shellcheck -e SC2153,SC2181 ./bootstrap
