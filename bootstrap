@@ -9,7 +9,7 @@ HANDLER="${_HANDLER##*.}"
 WARNING="warning: using \`--render\` with a function that returns values is experimental and may break in the future"
 PREP_ENV_VARS=$(paste -sd "," <<< "$(env)")
 
-printf "layer version\n$LAYER_VERSION\n\nenv vars\n$(env)\n\nwasmtime version "
+printf "layer version $LAYER_VERSION\n\nenv vars\n$(env)\n\nwasmtime version "
 /opt/bin/wasmtime --version
 
 if [[ $? -ne 0 ]]; then
