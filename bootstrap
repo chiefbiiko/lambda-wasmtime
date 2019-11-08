@@ -7,13 +7,9 @@ API="http://$AWS_LAMBDA_RUNTIME_API/2018-06-01/runtime"
 FILE="$LAMBDA_TASK_ROOT/${_HANDLER%%.*}.wasm"
 HANDLER="${_HANDLER##*.}"
 WARNING="warning: using \`--render\` with a function that returns values is experimental and may break in the future"
-ENV_VARS=""
+PREP_ENV_VARS=$(paste -sd "," <<< "$(env)")
 
-while read -r kv; do
-  ENV_VARS="$ENV_VARS --env=$kv"
-done <<< "$(env)"
-
-echo -e "layer version\n$LAYER_VERSION\n\nenv vars\n$(env)\n\nwasmtime version"
+printf "layer version\n$LAYER_VERSION\n\nenv vars\n$(env)\n\nwasmtime version "
 /opt/bin/wasmtime --version
 
 if [[ $? -ne 0 ]]; then
@@ -23,13 +19,20 @@ fi
 
 while :; do
   response=$(curl -fsSLD - "$API/invocation/next")
+  # fix below 2 lines
   body="${response#*\\n\\n}"
   headers="${response%"\n\n$body"}"
   request_id=$(grep -ioP "(?<=Lambda-Runtime-Aws-Request-Id: )(\S*)" <<< "$headers")
+  function_arn=$(grep -ioP "(?<=Lambda-Runtime-Invoked-Function-Arn: )(\S*)" <<< "$headers")
+  deadline_ms=$(grep -ioP "(?<=Lambda-Runtime-Deadline-Ms: )(\S*)" <<< "$headers")
   _x_amzn_trace_id=$(grep -ioP "(?<=Lambda-Runtime-Trace-Id: )(\S*)" <<< "$headers")
 
+  printf "headers\n$headers\n"
+
+  printf "body\n$body\n"
+
   # TODO: pass event n context
-  result=$(/opt/bin/wasmtime "$ENV_VARS" --env=_x_amzn_trace_id="$_x_amzn_trace_id" --disable-cache --invoke="$HANDLER" "$FILE" 2>&1 | grep -v "$WARNING")
+  result=$(/opt/bin/wasmtime --disable-cache --env="$PREP_ENV_VARS,_x_amzn_trace_id=$_x_amzn_trace_id" --invoke="$HANDLER" "$FILE" 2>&1 | grep -v "$WARNING")
 
   if [[ $? -eq 0 ]]; then
     curl -fsSLX POST "$API/invocation/$request_id/response" -d "$result"
