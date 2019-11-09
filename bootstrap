@@ -31,7 +31,8 @@ while :; do
   request_id="$(grep -ioP "(?<=Lambda-Runtime-Aws-Request-Id: )(\S*)" <<< "$headers")"
   # function_arn=$(grep -ioP "(?<=Lambda-Runtime-Invoked-Function-Arn: )(\S*)" <<< "$headers")
   # deadline_ms=$(grep -ioP "(?<=Lambda-Runtime-Deadline-Ms: )(\S*)" <<< "$headers")
-
+  context=""
+  
   # TODO: pass context
   if result="$(/opt/bin/wasmtime --disable-cache --env="$PREP_ENV_VARS,_x_amzn_trace_id=$trace_id" --invoke="$HANDLER" "$FILE" "$event" 2>&1 | grep -v "$WARNING")"; then
     curl -fsSLX POST "$API/invocation/$request_id/response" -d "$result"
