@@ -26,4 +26,6 @@ jobs:
       - name: install wasmtime
         run: curl https://wasmtime.dev/install.sh -sSf | bash
       - name: run a demo
-        run: sh ./demo/demo.sh
+        run: |
+          bash ./demo/demo.sh
+          wc -c ./demo/thumbnail.png | grep -oE "[0-9]+" # | TODO: assert gt 0
