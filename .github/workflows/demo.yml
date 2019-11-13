@@ -1,0 +1,29 @@
+name: demo
+
+on: [push, pull_request, release]
+
+jobs:
+  check:
+    name: showcase a demo
+    runs-on: macos-latest
+    steps:
+      - name: clone repo@${{ github.ref }}
+        uses: actions/checkout@v1.0.0
+        with:
+          ref: ${{ github.ref }}
+      - name: install rust, cargo, rustup n more
+        uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: stable
+      # - name: install the rust wasm32-wasi target
+      #   run: rustup target install wasm32-wasi
+      - name: install cargo wasi
+        run: cargo install cargo-wasi
+      - name: install node n npm
+        uses: actions/setup-node@v1.1.2
+        with:
+          node-version: 12.x
+      - name: install wasmtime
+        run: curl https://wasmtime.dev/install.sh -sSf | bash
+      - name: run a demo
+        run: sh ./demo/demo.sh
