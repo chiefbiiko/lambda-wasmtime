@@ -20,7 +20,7 @@ context="{}"
 cargo wasi build --release
 
 # run an export from our wasm module - passing in strings!!!
-result="$(wasmtime --disable-cache --enable-simd --invoke=handler "$wasm" "$event" "$context" 2>&1 | grep -v warning)"
+result="$($(which wasmtime) --disable-cache --enable-simd --invoke=handler "$wasm" "$event" "$context" 2>&1 | grep -v warning)"
 
 # massage the image from JSON to a PNG
 node -e "fs.writeFileSync('./thumbnail.png',Buffer.from(JSON.parse('$result').data,'base64'))"
