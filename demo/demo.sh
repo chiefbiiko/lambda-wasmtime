@@ -15,7 +15,7 @@ event="{\"data\":\"$(base64 $demo_dir/luigi.png)\"}"
 context="{}"
 
 # build the interface-types-enabled wasm module
-cargo wasi build --release
+cargo wasi build --release --manifest-path="$demo_dir/Cargo.toml"
 
 # run an export from our wasm module - passing in strings!!!
 result="$(wasmtime --disable-cache --enable-simd --invoke=handler "$wasm" "$event" "$context" 2>&1 | grep -v warning)"
