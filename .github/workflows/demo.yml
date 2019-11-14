@@ -15,8 +15,6 @@ jobs:
         uses: hecrj/setup-rust-action@v1
         with:
           rust-version: stable
-      # - name: install the rust wasm32-wasi target
-      #   run: rustup target install wasm32-wasi
       - name: install cargo wasi
         run: cargo install cargo-wasi
       - name: install node n npm
@@ -27,5 +25,5 @@ jobs:
         run: curl https://wasmtime.dev/install.sh -sSf | bash
       - name: run a demo
         run: |
-          bash ./demo/demo.sh
-          wc -c ./demo/thumbnail.png | grep -oE "[0-9]+" # | TODO: assert gt 0
+          bash ./demo/demo.sh "$GITHUB_WORKSPACE/demo"
+          if [[ "$(wc -c ./demo/thumbnail.png | grep -oE '[0-9]+')" -eq "0" ]]; then exit 1; fi
