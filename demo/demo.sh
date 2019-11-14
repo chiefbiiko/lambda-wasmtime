@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -Eeo pipefail
+set -o pipefail #-Ee
 
 # simple demo script showcasing
 #  + how to compile Rust to a wasm module that uses interface types (strings!)
