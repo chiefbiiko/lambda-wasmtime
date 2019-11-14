@@ -8,13 +8,31 @@
 
 ## Demo
 
+Check out the `demo` directory for an example of building a wasm lambda with Rust.
+The wasm module exports a function "handler" that when invoked with two JSON strings, 
+the event and context objects, processes a base64 encoded image and returns a JSON response. 
+
+Note that in order to get madness like wasm interface types 4 things like "wasm string args" working follow [below steps](#building-a-wasm-lambda).
+
 ...
 
-Check out the `demo` directory for an example of building a WebAssembly Lambda with Rust.
+### Getting the runtime
 
-## Deploy
+[public runtime arn]
 
-Get the latest
+[github releases]
+
+### Building a wasm lambda
+
+[cargo toml lib.crate-type cdylib + dependencies.wasm-bindgen]
+
+[#[wasm_bindgen] macro 4 yo fn]
+
+[cargo install cargo-wasi]
+
+[cargo wasi build --release]
+
+[zip -j $archive $wasm]
 
 ## License
 
