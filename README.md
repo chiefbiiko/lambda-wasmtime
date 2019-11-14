@@ -12,7 +12,7 @@ Check out the `demo` directory for an example of building a wasm lambda with Rus
 The wasm module exports a function "handler" that when invoked with two JSON strings, 
 the event and context objects, processes a base64 encoded image and returns a JSON response. 
 
-Note that in order to get madness like wasm interface types 4 things like "wasm string args" working follow [below steps](#building-a-wasm-lambda).
+Note that in order to get madness like wasm interface types 4 things like "wasm string args" working follow [below steps](#building-a-wasm-lambda) or check this [`wasmtime guide`](https://bytecodealliance.github.io/wasmtime/wasm-rust.html#webassembly-interface-types).
 
 ...
 
