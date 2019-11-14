@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -uo pipefail
+set -Eeuo pipefail
 
 post_init_error() {
   curl -fsSLX POST "$API/init/error" -d '{"error":"runtime initialization failed"}'
@@ -14,14 +14,10 @@ HANDLER="${_HANDLER##*.}"
 WARNING="warning: using \`--render\` with a function that returns values is experimental and may break in the future"
 PREP_ENV_VARS="$(paste -sd "," <<< "$(env)")"
 
-printf "env vars\n%s\nwasmtime version " "$(env)"
-
-if ! /opt/bin/wasmtime --version; then
-  exit 1
-fi
+printf "env vars\n%s\nwasmtime version " "$(env)" "$(/opt/bin/wasmtime --version)"
 
 trap - EXIT
-set +u
+set +Eeu
 
 while :; do
   response="$(curl -fsSLD - "$API/invocation/next")"
