@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -Eeuo pipefail
+set -Eeo pipefail
 
 # simple demo script showcasing
 #  + how to compile Rust to a wasm module that uses interface types (strings!)
@@ -11,7 +11,7 @@ set -Eeuo pipefail
 demo_dir="${1:-"$(pwd)"}"
 
 wasm="$demo_dir/target/wasm32-wasi/release/demo.wasm"
-event="{\"data\":\"$(base64 \"$demo_dir/luigi.png\")\"}"
+event="{\"data\":\"$(base64 $demo_dir/luigi.png)\"}"
 context="{}"
 
 # build the interface-types-enabled wasm module
