@@ -14,7 +14,7 @@ HANDLER="${_HANDLER##*.}"
 WARNING="warning: using \`--render\` with a function that returns values is experimental and may break in the future"
 PREP_ENV_VARS="$(paste -sd "," <<< "$(env)")"
 
-printf "env vars\n%s\nwasmtime version " "$(env)" "$(/opt/bin/wasmtime --version)"
+printf "env vars\n%s\nwasmtime version %s" "$(env)" "$(/opt/bin/wasmtime --version)"
 
 trap - EXIT
 set +Eeu
