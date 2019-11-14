@@ -25,5 +25,5 @@ jobs:
         run: curl https://wasmtime.dev/install.sh -sSf | bash
       - name: run a demo
         run: |
-          bash ./demo/demo.sh "$GITHUB_WORKSPACE/demo"
+          bash ./demo/demo.sh "$(pwd)/demo"
           if [[ "$(wc -c ./demo/thumbnail.png | grep -oE '[0-9]+')" -eq "0" ]]; then exit 1; fi
