@@ -30,7 +30,7 @@ while :; do
   context="{\"function_arn\":\"$function_arn\",\"deadline_ms\":\"$deadline_ms\",\"request_id\":\"$request_id\",\"trace_id\":\"$trace_id\"}"
   {
     # allow /tmp?
-    if result="$(/opt/bin/wasmtime --disable-cache --enable-simd --env="$PREP_ENV_VARS,_x_amzn_trace_id=$trace_id" --invoke="$HANDLER" "$FILE" "$event" "$context" 2>&1 | grep -v "$WARNING")"; then
+    if result="$(/opt/bin/wasmtime --disable-cache --env="$PREP_ENV_VARS,_x_amzn_trace_id=$trace_id" --invoke="$HANDLER" "$FILE" "$event" "$context" 2>&1 | grep -v "$WARNING")"; then
       curl -fsSLX POST "$API/invocation/$request_id/response" -d "$result"
     else
       curl -fsSLX POST "$API/invocation/$request_id/error" -d "$result"
