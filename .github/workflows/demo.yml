@@ -25,7 +25,6 @@ jobs:
         run: curl https://wasmtime.dev/install.sh -sSf | bash
       - name: run a demo
         run: |
-          set -Eeo pipefail
-          source ~/.bash_profile # make wamstime available
+          source ~/.profile # make wasmtime available
           bash ./demo/demo.sh "$(pwd)/demo"
           if [[ "$(wc -c ./demo/thumbnail.png | grep -oP '[0-9]+')" -eq "0" ]]; then exit 1; fi
