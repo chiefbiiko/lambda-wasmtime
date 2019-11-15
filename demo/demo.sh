@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+set -e
 # usage: bash $0 [demo_dir]
 
 cat << EOM
