@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-set -e
+
 # usage: bash $0 [demo_dir]
 
-cat << EOM
+cat << EOL
 simple demo script showcasing
  + how to compile Rust to a wasm module that uses interface types (strings!)
  + that such wasm can do real-world tasks like image processing
-EOM
+EOL
 
 cd "${1:-"$(pwd)"}"
 
@@ -18,7 +18,7 @@ context="{}"
 cargo wasi build --release
 
 # run an export from our wasm module - passing in strings!!!
-result="$(wasmtime --disable-cache --enable-simd --invoke=handler "$wasm" "$event" "$context" 2>&1 | grep -v warning)"
+result="$($(which wasmtime) --disable-cache --enable-simd --invoke=handler "$wasm" "$event" "$context" 2>&1 | grep -v warning)"
 
 # massage the image from JSON to a PNG
 node -e "fs.writeFileSync('./thumbnail.png',Buffer.from(JSON.parse('$result').data,'base64'))"
