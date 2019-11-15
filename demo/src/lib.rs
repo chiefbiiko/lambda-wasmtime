@@ -12,7 +12,7 @@ pub fn handler(event: &str, _context: &str) -> String {
                 .as_str().unwrap(),
         ).unwrap(),
     ).unwrap()
-    .thumbnail(256, 256);
+    .thumbnail(128, 128);
 
     let mut thumbnail_buf: Vec<u8> = Vec::new();
 
