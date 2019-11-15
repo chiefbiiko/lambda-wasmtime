@@ -14,7 +14,7 @@ HANDLER="${_HANDLER##*.}"
 WARNING="warning: using \`--render\` with a function that returns values is experimental and may break in the future"
 PREP_ENV_VARS="$(paste -sd "," <<< "$(env)")"
 
-printf "env vars\n%s\nwasmtime version %s" "$(env)" "$(/opt/bin/wasmtime --version)"
+printf "env vars\n%s\nwasmtime version %s\n" "$(env)" "$(/opt/bin/wasmtime --version)"
 
 trap - EXIT
 set +u # -Eeu
@@ -24,8 +24,14 @@ while :; do
   echo "DEBUG: getting next event"
 
   response="$(curl -fsSLD - "$API/invocation/next")"
+
+  echo "DEBUG: got thru curl"
+
   event="${response#*\\n\\n}"
   headers="${response%%\\n\\n*}"
+
+  echo "DEBUG: got thru param expansions"
+
   function_arn="$(grep -ioP "(?<=Lambda-Runtime-Invoked-Function-Arn: )([^[:space:]]*)" <<< "$headers")"
   deadline_ms="$(grep -ioP "(?<=Lambda-Runtime-Deadline-Ms: )([^[:space:]]*)" <<< "$headers")"
   trace_id="$(grep -ioP "(?<=Lambda-Runtime-Trace-Id: )([^[:space:]]*)" <<< "$headers")"
