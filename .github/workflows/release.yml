@@ -9,8 +9,11 @@ jobs:
   publish:
     name: publish a release
     runs-on: ubuntu-latest
-    steps:
-      - name: clone repo@${{ github.ref }}
+    steps:    
+      - name: get version
+        id: get_version
+        run: echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
+      - name: checkout@${{ steps.get_version.outputs.version }}
         uses: actions/checkout@v1.0.0
         with:
           ref: ${{ github.ref }}
@@ -37,5 +40,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} 
           asset_path: ./lambda_wasmtime.zip
-          asset_name: lambda_wasmtime.zip
+          asset_name: lambda_wasmtime_${{ steps.get_version.outputs.version }}.zip
           asset_content_type: application/zip
