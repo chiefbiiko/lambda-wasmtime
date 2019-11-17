@@ -1,8 +1,9 @@
 # hello lambda-wasmtime
 
-With [`lambda-wasmtime`](https://github.com/chiefbiiko/lambda-wasmtime) we have a [`wasmtime`](https://wasmtime.dev/)-powered custom AWS Lambda runtime 
+With [`lambda-wasmtime`](https://github.com/chiefbiiko/lambda-wasmtime) we have 
+a [`wasmtime`](https://wasmtime.dev/)-powered custom AWS Lambda runtime 
 for running WebAssembly, including futuristic stuff like 
-WASI (WebAssembly System Interface) and WAIT (WebAssembly Interface Types).
+[WASI (WebAssembly System Interface)](https://wasi.dev/) and [WAIT (WebAssembly Interface Types)](https://github.com/WebAssembly/interface-types/blob/master/proposals/interface-types/Explainer.md).
 
 To run in the AWS Lambda execution environment we need to build a WebAssembly 
 module that exports a function capable of accepting and returning strings 
@@ -41,16 +42,10 @@ Note that you can name your handler whatever you want. The `lambda-wasmtime` run
 
 **Build** the `.wasm` binary: `cargo wasi build --release`
 
-> For now, when using wasm-bindgen `--release` mode is required to build binaries with interface types
+> For now, when using wasm-bindgen `--release` mode is required to build binaries with interface types (~strings)
 
 **Zipup** a lambda bundle: `zip -j <project>/lambda.zip <project>/target/wasm32-wasi/release/<project_name>.wasm`
 
 **Deploy** the lambda bundle on AWS with the `lambda-wasmtime` runtime layer - get its latest release from [here](https://github.com/chiefbiiko/lambda-wasmtime/releases/latest)
 
-If your handler performs non-trivial computations you probably need to provision the lambda with extra memory. Also note that currently, all of this is in MVP state and experimental.
-
-## Prebuilt WebAssembly Lambda Demo
-
-![demo](https://github.com/chiefbiiko/lambda-wasmtime/workflows/demo/badge.svg)
-
-[This demo](https://github.com/chiefbiiko/lambda-wasmtime/tree/master/demo) showcases a wasm module exporting a handler that when invoked with two JSON strings, the event and context objects, processes a base64 encoded image, creates a thumbnail of it, and returns the base64 representation of that thumbnail as a JSON response. The corresponding lambda bundle is [here](https://github.com/chiefbiiko/lambda-wasmtime/blob/master/demo/demo.zip), a dirty `bash` script running the demo locally is available [here](https://github.com/chiefbiiko/lambda-wasmtime/blob/master/demo/demo.sh).
+If your handler performs non-trivial computations you probably need to provision the lambda with extra memory. Also note that currently all of this is in MVP state and experimental.
