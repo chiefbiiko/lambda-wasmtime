@@ -2,27 +2,15 @@
 
 ![shellcheck](https://github.com/chiefbiiko/lambda-wasmtime/workflows/shellcheck/badge.svg) ![demo](https://github.com/chiefbiiko/lambda-wasmtime/workflows/demo/badge.svg)
 
-## wat
+**wat??** `lambda-wasmtime` is a custom AWS Lambda runtime built with [`wasmtime`](https://wasmtime.dev/). Runs WebAssembly on AWS Lambda.
 
-`lambda-wasmtime` is a custom AWS Lambda runtime built with [`wasmtime`](https://wasmtime.dev/).
+### Getting the Runtime
 
-## Demo
+Currently only available from [Github Releases](https://github.com/chiefbiiko/lambda-wasmtime/releases/latest). Make sure to check for new releases and update your runtime layer from time to time.
 
-Check out the `demo` directory for an example of building a wasm lambda with Rust.
-The wasm module exports a function "handler" that when invoked with two JSON strings, 
-the event and context objects, processes a base64 encoded image and returns a JSON response. 
+### Building a WebAssembly Lambda
 
-Note that in order to get madness like wasm interface types 4 things like "wasm string args" working follow [below steps](#building-a-wasm-lambda) or check this [`wasmtime guide`](https://bytecodealliance.github.io/wasmtime/wasm-rust.html#webassembly-interface-types).
-
-...
-
-### Getting the runtime
-
-[public runtime arn]
-
-[github releases]
-
-### Building a wasm lambda
+Check out this [x-minute article](...) for a detailed walkthrough of building a wasm lambda. A little background info can be found in the [`wasmtime guide`](https://bytecodealliance.github.io/wasmtime/wasm-rust.html#webassembly-interface-types).
 
 [cargo toml lib.crate-type cdylib + dependencies.wasm-bindgen]
 

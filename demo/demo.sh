@@ -6,6 +6,10 @@ cat << EOL
 simple demo script showcasing
  + how to compile Rust to a wasm module that uses interface types (strings!)
  + that such wasm can do real-world tasks like image processing
+   + the wasm module exports a function "handler" that when invoked with two 
+     JSON strings, the event and context objects, processes a base64 encoded 
+     image, creates a thumbnail of it, and returns the base64 representation
+     of that thumbnail as a JSON response
 EOL
 
 cd "${1:-"$(pwd)"}"
@@ -30,5 +34,8 @@ if ! viu -ntv ./luigi.png ./thumbnail.png; then
 fi
 
 # zipup a demo lambda bundle
-# can be deployed on aws with the runtime layer ./../lambda_wasmtime.zip
+# can be deployed on aws with the runtime layer - get its latest release from:
+# https://github.com/chiefbiiko/lambda-wasmtime/releases/latest
+# make sure to provision the lambda with approx. 2048 MB memory and a 5s timeout
+# note: all of this is mvp and experimental at the moment
 zip -j ./demo.zip "$wasm" > /dev/null
