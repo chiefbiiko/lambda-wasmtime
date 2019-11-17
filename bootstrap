@@ -19,7 +19,7 @@ printf "env vars\n%s\nwasmtime version %s\n" "$(env)" "$(/opt/bin/wasmtime --ver
 
 set +Eeu
 trap - EXIT
-trap "rm -f $HEADERS" EXIT
+trap 'rm -f "$HEADERS"' EXIT
 
 invoke_wasm() { # request_id trace_id event context
   if result="$(/opt/bin/wasmtime --disable-cache --enable-simd --env="$PREP_ENV_VARS,_X_AMZN_TRACE_ID=$2" --invoke="$HANDLER" "$FILE" "$3" "$4" 2>&1 | grep -v "$WARNING")"; then
