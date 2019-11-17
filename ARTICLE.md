@@ -6,8 +6,7 @@ for running WebAssembly, including futuristic stuff like
 [WASI (WebAssembly System Interface)](https://wasi.dev/) and [WAIT (WebAssembly Interface Types)](https://github.com/WebAssembly/interface-types/blob/master/proposals/interface-types/Explainer.md).
 
 To run in the AWS Lambda execution environment we need to build a WebAssembly 
-module that exports a function capable of accepting and returning strings 
-(`JSON`). The remainder of this post demonstrates just that.
+module that exports a function capable of accepting and returning `JSON` strings. The remainder of this post demonstrates just that.
 
 ## Building a WebAssembly Lambda with Rust
 
