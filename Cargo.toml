@@ -1,0 +1,42 @@
+[package]
+name = "lambda-wasmtime"
+version = "0.3.0"
+authors = ["Noah Anabiik Schwarz <noah.anabiik.schwarz@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+# Enable all supported architectures by default.
+cranelift-codegen = { version = "0.50.0", features = ["enable-serde", "all-arch"] }
+cranelift-entity = { version = "0.50.0", features = ["enable-serde"] }
+cranelift-wasm = { version = "0.50.0", features = ["enable-serde"] }
+cranelift-native = "0.50.0"
+wasmtime = "0.8.0"
+wasmtime-debug = "0.8.0"
+wasmtime-environ = "0.8.0"
+wasmtime-interface-types = "0.8.0"
+wasmtime-jit = "0.8.0"
+wasmtime-obj = "0.8.0"
+wasmtime-wast = "0.8.0"
+wasmtime-wasi = "0.8.0"
+wasmtime-wasi-c = { version = "0.8.0", optional = true }
+wasm-webidl-bindings = "0.6"
+wasi-common = "0.8.0"
+wat = "1.0.2"
+docopt = "1.0.1"
+serde = { "version" = "1.0.94", features = ["derive"] }
+faerie = "0.13.0"
+anyhow = "1.0.19"
+target-lexicon = { version = "0.9.0", default-features = false }
+pretty_env_logger = "0.3.0"
+file-per-thread-logger = "0.1.1"
+libc = "0.2.60"
+rayon = "1.1"
+more-asserts = "0.2.1"
+# surf = "1.0.3"
+reqwest = { version = "0.10.1", features = ["blocking"] }
+
+[build-dependencies]
+anyhow = "1.0.19"
+
+[features]
+wasi-c = ["wasmtime-wasi-c"]
