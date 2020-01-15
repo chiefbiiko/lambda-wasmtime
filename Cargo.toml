@@ -18,7 +18,8 @@ wasmtime-jit = "0.8.0"
 wasmtime-obj = "0.8.0"
 wasmtime-wast = "0.8.0"
 wasmtime-wasi = "0.8.0"
-wasmtime-wasi-c = { version = "0.8.0", optional = true }
+# wasmtime-wasi-c = { version = "0.8.0", optional = true }
+wasmtime-wasi-c = "0.8.0"
 wasm-webidl-bindings = "0.6"
 wasi-common = "0.8.0"
 wat = "1.0.2"
@@ -35,11 +36,11 @@ more-asserts = "0.2.1"
 # surf = "1.0.3"
 reqwest = { version = "0.10.1", features = ["blocking"] }
 
-[build-dependencies]
-anyhow = "1.0.19"
-
 [build]
 target = "x86_64-unknown-linux-gnu"
+
+[build-dependencies]
+anyhow = "1.0.19"
 
 # [features]
 # wasi-c = ["wasmtime-wasi-c"]

@@ -47,7 +47,7 @@ use wasmtime_interface_types::ModuleData;
 use wasmtime_jit::{CompilationStrategy, Features};
 use wasmtime_wasi::create_wasi_instance;
 // use wasmtime_wasi::old::snapshot_0::create_wasi_instance as create_wasi_instance_snapshot_0;
-#[cfg(feature = "wasi-c")]
+// #[cfg(feature = "wasi-c")]
 use wasmtime_wasi_c::instantiate_wasi_c;
 use wasmtime_wast::instantiate_spectest;
 use wasm_webidl_bindings::ast;
@@ -503,16 +503,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // });
 
     let wasi_unstable = HostRef::new({
-        #[cfg(feature = "wasi-c")]
-        {
-            let global_exports = store.borrow().global_exports().clone();
-            let handle = instantiate_wasi_c("", global_exports, &preopen_dirs, &argv, &environ)?;
-            Instance::from_handle(&store, handle)
-        }
-        #[cfg(not(feature = "wasi-c"))]
-        {
-            bail!("wasi-c feature not enabled at build time")
-        }
+        let global_exports = store.borrow().global_exports().clone();
+        let handle = instantiate_wasi_c("", global_exports, &preopen_dirs, &argv, &environ)?;
+        Instance::from_handle(&store, handle)
     });
 
     let wasi_snapshot_preview1 = HostRef::new(create_wasi_instance(
