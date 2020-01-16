@@ -32,66 +32,20 @@
 
 use anyhow::{anyhow, bail, Context as _, Result as AnyHowResult};
 use cranelift_codegen::{settings, settings::Configurable};
-// use docopt::Docopt;
 use reqwest::blocking::Client;
 use serde::Deserialize;
 use std::env::var;
 use std::path::{Component, Path};
 use std::{collections::HashMap, ffi::OsStr, fs::File, process::exit};
-// use surf;
 use wasi_common::preopen_dir;
 use wasmtime::{Config, Engine, HostRef, Instance, Module, Store};
-// use wasmtime_cli::pick_compilation_strategy;
-// use wasmtime_environ::{cache_create_new_config, cache_init};
 use wasmtime_interface_types::ModuleData;
 use wasmtime_jit::{CompilationStrategy, Features};
 use wasmtime_wasi::create_wasi_instance;
-// use wasmtime_wasi::old::snapshot_0::create_wasi_instance as create_wasi_instance_snapshot_0;
-// #[cfg(feature = "wasi-c")]
 use wasmtime_wasi_c::instantiate_wasi_c;
 use wasmtime_wast::instantiate_spectest;
 use wasm_webidl_bindings::ast;
 use wasmtime_interface_types::Value;
-
-const USAGE: &str = "
-Wasm runner.
-Takes a binary (wasm) or text (wat) WebAssembly module and instantiates it,
-including calling the start function if one is present. Additional functions
-given with --invoke are then called.
-Usage:
-    wasmtime [-odg] [--enable-simd] [--wasi-c] [--disable-cache | \
-     --cache-config=<cache_config_file>] [--preload=<wasm>...] [--env=<env>...] [--dir=<dir>...] \
-     [--mapdir=<mapping>...] [--lightbeam | --cranelift] <file> [<arg>...]
-    wasmtime [-odg] [--enable-simd] [--wasi-c] [--disable-cache | \
-     --cache-config=<cache_config_file>] [--env=<env>...] [--dir=<dir>...] \
-     [--mapdir=<mapping>...] --invoke=<fn> [--lightbeam | --cranelift] <file> [<arg>...]
-    wasmtime --create-cache-config [--cache-config=<cache_config_file>]
-    wasmtime --help | --version
-Options:
-    --invoke=<fn>       name of function to run
-    -o, --optimize      runs optimization passes on the translated functions
-    --disable-cache     disables cache system
-    --cache-config=<cache_config_file>
-                        use specified cache configuration;
-                        can be used with --create-cache-config to specify custom file
-    --create-cache-config
-                        creates default configuration and writes it to the disk,
-                        use with --cache-config to specify custom config file
-                        instead of default one
-    -g                  generate debug information
-    -d, --debug         enable debug output on stderr/stdout
-    --lightbeam         use Lightbeam for all compilation
-    --cranelift         use Cranelift for all compilation
-    --enable-simd       enable proposed SIMD instructions
-    --wasi-c            enable the wasi-c implementation of `wasi_unstable`
-    --preload=<wasm>    load an additional wasm module before loading the main module
-    --env=<env>         pass an environment variable (\"key=value\") to the program
-    --dir=<dir>         grant access to the given host directory
-    --mapdir=<mapping>  where <mapping> has the form <wasmdir>::<hostdir>, grant access to
-                        the given host directory with the given wasm directory name
-    -h, --help          print this help message
-    --version           print the Cranelift version
-";
 
 #[derive(Deserialize, Debug, Clone)]
 struct Args {
