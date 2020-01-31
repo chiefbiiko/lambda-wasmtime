@@ -1,6 +1,6 @@
 [package]
 name = "lambda-wasmtime"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Noah Anabiik Schwarz <noah.anabiik.schwarz@gmail.com>"]
 edition = "2018"
 
@@ -34,13 +34,18 @@ libc = "0.2.60"
 rayon = "1.1"
 more-asserts = "0.2.1"
 # surf = "1.0.3"
-reqwest = { version = "0.10.1", features = ["blocking"] }
+reqwest = { version = "0.10.1", features = ["blocking"], default-features = false }
 
-[build]
-target = "x86_64-unknown-linux-gnu"
+# [build]
+# target = "x86_64-unknown-linux-gnu"
+# target="x86_64-unknown-linux-musl"
 
 [build-dependencies]
 anyhow = "1.0.19"
+cargo-make = "0.26.2"
+
+# [lib]
+# crate-type = ["staticlib"]
 
 # [features]
 # wasi-c = ["wasmtime-wasi-c"]

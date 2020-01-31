@@ -32,20 +32,66 @@
 
 use anyhow::{anyhow, bail, Context as _, Result as AnyHowResult};
 use cranelift_codegen::{settings, settings::Configurable};
+// use docopt::Docopt;
 use reqwest::blocking::Client;
 use serde::Deserialize;
 use std::env::var;
 use std::path::{Component, Path};
 use std::{collections::HashMap, ffi::OsStr, fs::File, process::exit};
+// use surf;
 use wasi_common::preopen_dir;
 use wasmtime::{Config, Engine, HostRef, Instance, Module, Store};
+// use wasmtime_cli::pick_compilation_strategy;
+// use wasmtime_environ::{cache_create_new_config, cache_init};
 use wasmtime_interface_types::ModuleData;
 use wasmtime_jit::{CompilationStrategy, Features};
 use wasmtime_wasi::create_wasi_instance;
-use wasmtime_wasi_c::instantiate_wasi_c;
-use wasmtime_wast::instantiate_spectest;
+// use wasmtime_wasi::old::snapshot_0::create_wasi_instance as create_wasi_instance_snapshot_0;
+// #[cfg(feature = "wasi-c")]
 use wasm_webidl_bindings::ast;
 use wasmtime_interface_types::Value;
+use wasmtime_wasi_c::instantiate_wasi_c;
+use wasmtime_wast::instantiate_spectest;
+
+// const USAGE: &str = "
+// Wasm runner.
+// Takes a binary (wasm) or text (wat) WebAssembly module and instantiates it,
+// including calling the start function if one is present. Additional functions
+// given with --invoke are then called.
+// Usage:
+//     wasmtime [-odg] [--enable-simd] [--wasi-c] [--disable-cache | \
+//      --cache-config=<cache_config_file>] [--preload=<wasm>...] [--env=<env>...] [--dir=<dir>...] \
+//      [--mapdir=<mapping>...] [--lightbeam | --cranelift] <file> [<arg>...]
+//     wasmtime [-odg] [--enable-simd] [--wasi-c] [--disable-cache | \
+//      --cache-config=<cache_config_file>] [--env=<env>...] [--dir=<dir>...] \
+//      [--mapdir=<mapping>...] --invoke=<fn> [--lightbeam | --cranelift] <file> [<arg>...]
+//     wasmtime --create-cache-config [--cache-config=<cache_config_file>]
+//     wasmtime --help | --version
+// Options:
+//     --invoke=<fn>       name of function to run
+//     -o, --optimize      runs optimization passes on the translated functions
+//     --disable-cache     disables cache system
+//     --cache-config=<cache_config_file>
+//                         use specified cache configuration;
+//                         can be used with --create-cache-config to specify custom file
+//     --create-cache-config
+//                         creates default configuration and writes it to the disk,
+//                         use with --cache-config to specify custom config file
+//                         instead of default one
+//     -g                  generate debug information
+//     -d, --debug         enable debug output on stderr/stdout
+//     --lightbeam         use Lightbeam for all compilation
+//     --cranelift         use Cranelift for all compilation
+//     --enable-simd       enable proposed SIMD instructions
+//     --wasi-c            enable the wasi-c implementation of `wasi_unstable`
+//     --preload=<wasm>    load an additional wasm module before loading the main module
+//     --env=<env>         pass an environment variable (\"key=value\") to the program
+//     --dir=<dir>         grant access to the given host directory
+//     --mapdir=<mapping>  where <mapping> has the form <wasmdir>::<hostdir>, grant access to
+//                         the given host directory with the given wasm directory name
+//     -h, --help          print this help message
+//     --version           print the Cranelift version
+// ";
 
 #[derive(Deserialize, Debug, Clone)]
 struct Args {
@@ -68,44 +114,44 @@ struct Args {
     flag_wasi_c: bool,
 }
 
-fn pick_compilation_strategy(cranelift: bool, lightbeam: bool) -> CompilationStrategy {
-  // Decide how to compile.
-  match (lightbeam, cranelift) {
-      #[cfg(feature = "lightbeam")]
-      (true, false) => CompilationStrategy::Lightbeam,
-      #[cfg(not(feature = "lightbeam"))]
-      (true, false) => panic!("--lightbeam given, but Lightbeam support is not enabled"),
-      (false, true) => CompilationStrategy::Cranelift,
-      (false, false) => CompilationStrategy::Auto,
-      (true, true) => panic!("Can't enable --cranelift and --lightbeam at the same time"),
-  }
-}
+// fn pick_compilation_strategy(cranelift: bool, lightbeam: bool) -> CompilationStrategy {
+//   // Decide how to compile.
+//   match (lightbeam, cranelift) {
+//       #[cfg(feature = "lightbeam")]
+//       (true, false) => CompilationStrategy::Lightbeam,
+//       #[cfg(not(feature = "lightbeam"))]
+//       (true, false) => panic!("--lightbeam given, but Lightbeam support is not enabled"),
+//       (false, true) => CompilationStrategy::Cranelift,
+//       (false, false) => CompilationStrategy::Auto,
+//       (true, true) => panic!("Can't enable --cranelift and --lightbeam at the same time"),
+//   }
+// }
 
-fn init_file_per_thread_logger(prefix: &'static str) {
-  file_per_thread_logger::initialize(prefix);
-
-  // Extending behavior of default spawner:
-  // https://docs.rs/rayon/1.1.0/rayon/struct.ThreadPoolBuilder.html#method.spawn_handler
-  // Source code says DefaultSpawner is implementation detail and
-  // shouldn't be used directly.
-  rayon::ThreadPoolBuilder::new()
-      .spawn_handler(move |thread| {
-          let mut b = std::thread::Builder::new();
-          if let Some(name) = thread.name() {
-              b = b.name(name.to_owned());
-          }
-          if let Some(stack_size) = thread.stack_size() {
-              b = b.stack_size(stack_size);
-          }
-          b.spawn(move || {
-              file_per_thread_logger::initialize(prefix);
-              thread.run()
-          })?;
-          Ok(())
-      })
-      .build_global()
-      .unwrap();
-}
+// fn init_file_per_thread_logger(prefix: &'static str) {
+//   file_per_thread_logger::initialize(prefix);
+//
+//   // Extending behavior of default spawner:
+//   // https://docs.rs/rayon/1.1.0/rayon/struct.ThreadPoolBuilder.html#method.spawn_handler
+//   // Source code says DefaultSpawner is implementation detail and
+//   // shouldn't be used directly.
+//   rayon::ThreadPoolBuilder::new()
+//       .spawn_handler(move |thread| {
+//           let mut b = std::thread::Builder::new();
+//           if let Some(name) = thread.name() {
+//               b = b.name(name.to_owned());
+//           }
+//           if let Some(stack_size) = thread.stack_size() {
+//               b = b.stack_size(stack_size);
+//           }
+//           b.spawn(move || {
+//               file_per_thread_logger::initialize(prefix);
+//               thread.run()
+//           })?;
+//           Ok(())
+//       })
+//       .build_global()
+//       .unwrap();
+// }
 
 fn compute_preopen_dirs(flag_dir: &[String], flag_mapdir: &[String]) -> Vec<(String, File)> {
     let mut preopen_dirs = Vec::new();
@@ -309,15 +355,21 @@ fn invoke_export(
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let version = env!("CARGO_PKG_VERSION");
+    // let version = env!("CARGO_PKG_VERSION");
     // let warning = "warning .* is experimental and may break in the future";
-    let api = format!("http://{}/2018-06-01/runtime", var("AWS_LAMBDA_RUNTIME_API")?);
+    let api = format!(
+        "http://{}/2018-06-01/runtime",
+        var("AWS_LAMBDA_RUNTIME_API")?
+    );
     let api_next = format!("{}/invocation/next", api);
     let api_err = format!("{}/invocation/error", api);
     let api_ok = format!("{}/invocation/response", api);
 
     // let file_handler = var("_HANDLER")?.split(".").collect::<Vec<&str>>();
-    let file_handler = var("_HANDLER")?.split(".").map(str::to_string).collect::<Vec<String>>();
+    let file_handler = var("_HANDLER")?
+        .split(".")
+        .map(str::to_string)
+        .collect::<Vec<String>>();
     let prep_env_vars = &[]; // TODO: pass env vars to module instance
 
     // obsolete
@@ -339,11 +391,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // };
 
     // force debug false
-    let log_config = {
-        let prefix = "wasmtime.dbg.";
-        init_file_per_thread_logger(prefix);
-        Some(prefix)
-    };
+    // let log_config = {
+    //     let prefix = "wasmtime.dbg.";
+    //     init_file_per_thread_logger(prefix);
+    //     Some(prefix)
+    // };
 
     // obsolete
     // if args.flag_create_cache_config {
@@ -413,14 +465,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let strategy = pick_compilation_strategy(args.flag_cranelift, args.flag_lightbeam);
 
     // force cranelift
-    let strategy = pick_compilation_strategy(true, false);
+    // let strategy = pick_compilation_strategy(true, false);
 
     let mut config = Config::new();
     config
         .features(features)
         .flags(settings::Flags::new(flag_builder))
         .debug_info(debug_info)
-        .strategy(strategy);
+        // .strategy(strategy);
+        .strategy(CompilationStrategy::Cranelift);
     let engine = HostRef::new(Engine::new(&config));
     let store = HostRef::new(Store::new(&engine));
 
@@ -496,10 +549,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let response = client.get(&api_next).send()?;
         let headers = response.headers();
 
-        let function_arn = headers.get("Lambda-Runtime-Invoked-Function-Arn").ok_or(anyhow!("missing header Lambda-Runtime-Invoked-Function-Arn"))?;
-        let deadline_ms = headers.get("Lambda-Runtime-Deadline-Ms").ok_or(anyhow!("missing header Lambda-Runtime-Deadline-Ms"))?;
-        let request_id = headers.get("Lambda-Runtime-Request-Id").ok_or(anyhow!("missing header Lambda-Runtime-Request-Id"))?;
-        let trace_id = headers.get("Lambda-Runtime-Trace-Id").ok_or(anyhow!("missing header Lambda-Runtime-Trace-Id"))?;
+        let function_arn = headers
+            .get("Lambda-Runtime-Invoked-Function-Arn")
+            .ok_or(anyhow!(
+                "missing header Lambda-Runtime-Invoked-Function-Arn"
+            ))?;
+        let deadline_ms = headers
+            .get("Lambda-Runtime-Deadline-Ms")
+            .ok_or(anyhow!("missing header Lambda-Runtime-Deadline-Ms"))?;
+        let request_id = headers
+            .get("Lambda-Runtime-Request-Id")
+            .ok_or(anyhow!("missing header Lambda-Runtime-Request-Id"))?;
+        let trace_id = headers
+            .get("Lambda-Runtime-Trace-Id")
+            .ok_or(anyhow!("missing header Lambda-Runtime-Trace-Id"))?;
 
         let context = format!(
             "{{\"function_arn\":\"{:?}\",\"deadline_ms\":\"{:?}\",\"request_id\":\"{:?}\",\"trace_id\":\"{:?}\"}}",
@@ -509,8 +572,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         trace_id
          );
 
-                let event = response.text()?;
-
+        let event = response.text()?;
 
         // let mut event = String::new();
         // response.read_to_string(&mut event)?;
@@ -523,10 +585,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // let context = format!("{{\"function_arn\":\"{}\",\"deadline_ms\":\"{}\",\"request_id\":\"{}\",\"trace_id\":\"{}\"}}", function_arn, deadline_ms, request_id, trace_id);
 
         // invoke wasm n report result
-        match invoke_export(&instance, &ModuleData::new(&data)?, &file_handler[1], vec![event.to_string(), context]) {
+        match invoke_export(
+            &instance,
+            &ModuleData::new(&data)?,
+            &file_handler[1],
+            vec![event.to_string(), context],
+        ) {
             Ok(result) => client.post(&api_ok).body(result).send()?,
             // Ok(result) => surf::post(api_ok).body_string(result).await?,
-            _ => client.post(&api_err).body("{\"error\":\"lambda invocation failed\"}").send()?,
+            _ => client
+                .post(&api_err)
+                .body("{\"error\":\"lambda invocation failed\"}")
+                .send()?,
             // _ => surf::post(api_err).body_string("{\"error\":\"bootstrap fail\"}".to_string()).await?
         };
     }
