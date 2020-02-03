@@ -1,7 +1,12 @@
+# lambda-wasmtime build spec 4 cargo-make
+# 4 macos and ubuntu
+# 4 setup run: cargo make install-deps
+# 4 build run: cargo make runtime
+
 # 1time `cargo make install-deps` 4 setup
 
 [env]
-ZIP_FILE = "${ZIP_FILE:-lambda_wasmtime.zip}"
+ZIP_FILE = "${ZIP_FILE:-runtime.zip}"
 
 [tasks.install-target]
 command = "rustup"
@@ -15,9 +20,9 @@ args = ["update", "-y"]
 command = "apt-get"
 args = ["install", "gcc", "g++", "cmake", "-y"]
 
-[tasks.install-musl.linux] # ~ubuntu
+[tasks.install-musl.linux]
 command = "apt-get"
-args = ["install", "musl-tools","-y"]
+args = ["install", "musl-tools", "-y"]
 dependencies = ["apt-get-update", "apt-get-install-deps"]
 
 [tasks.install-musl.mac]
@@ -27,14 +32,14 @@ args = ["install", "FiloSottile/musl-cross/musl-cross"]
 [tasks.install-deps]
 dependencies = ["install-target", "install-musl"]
 
-# everyday cargo make tasks
+# everyday cargo-make tasks
 
 [tasks.build]
 command = "cargo"
 args = ["build", "--release", "--target=x86_64-unknown-linux-musl"]
 dependencies = ["format", "clean"]
 
-[tasks.build.linux] # ~ubuntu
+[tasks.build.linux]
 env = { PKG_CONFIG_ALLOW_CROSS=true, CC_x86_64_unknown_linux_musl="musl-gcc", CXX_x86_64_unknown_linux_musl="g++" }
 
 [tasks.build.mac]
@@ -50,5 +55,5 @@ command = "zip"
 args = ["-mj", "${ZIP_FILE}", "./target/x86_64-unknown-linux-musl/release/bootstrap"]
 dependencies = ["rename-exec"]
 
-[tasks.layer]
+[tasks.runtime]
 dependencies = ["build", "bundle"]

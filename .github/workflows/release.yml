@@ -6,7 +6,7 @@ on:
     - 'v*'
 
 env:
-  ZIP_FILE: lambda_wasmtime.zip
+  ZIP_FILE: runtime.zip
 
 jobs:
   publish:
