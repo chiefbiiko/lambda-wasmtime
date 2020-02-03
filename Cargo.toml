@@ -1,11 +1,11 @@
 [package]
 name = "lambda-wasmtime"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Noah Anabiik Schwarz <noah.anabiik.schwarz@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-# Enable all supported architectures by default.
+# FIXME: disable all-arch - Enable all supported architectures by default. 
 cranelift-codegen = { version = "0.50.0", features = ["enable-serde", "all-arch"] }
 cranelift-entity = { version = "0.50.0", features = ["enable-serde"] }
 cranelift-wasm = { version = "0.50.0", features = ["enable-serde"] }
@@ -40,9 +40,9 @@ reqwest = { version = "0.10.1", features = ["blocking"], default-features = fals
 # target = "x86_64-unknown-linux-gnu"
 # target="x86_64-unknown-linux-musl"
 
-[build-dependencies]
-anyhow = "1.0.19"
-cargo-make = "0.26.2"
+# [build-dependencies]
+# anyhow = "1.0.19"
+# cargo-make = "0.26.2"
 
 # [lib]
 # crate-type = ["staticlib"]

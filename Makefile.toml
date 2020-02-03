@@ -1,14 +1,26 @@
-# TODO
-# - make available 4 ubuntu and osx by finding a way to aalso compile on ubuntu
-# - update release workflow to also build embedded wasmtime
+# 1time `cargo make install-deps` 4 setup
 
-# 1time cargo make install-deps 4 setup
+[env]
+ZIP_FILE = "${ZIP_FILE:-lambda_wasmtime.zip}"
 
 [tasks.install-target]
 command = "rustup"
 args = ["target", "add", "x86_64-unknown-linux-musl"]
 
-[tasks.install-musl]
+[tasks.apt-get-update]
+command = "apt-get"
+args = ["update", "-y"]
+
+[tasks.apt-get-install-deps]
+command = "apt-get"
+args = ["install", "gcc", "g++", "cmake", "-y"]
+
+[tasks.install-musl.linux] # ~ubuntu
+command = "apt-get"
+args = ["install", "musl-tools","-y"]
+dependencies = ["apt-get-update", "apt-get-install-deps"]
+
+[tasks.install-musl.mac]
 command = "brew"
 args = ["install", "FiloSottile/musl-cross/musl-cross"]
 
@@ -17,29 +29,26 @@ dependencies = ["install-target", "install-musl"]
 
 # everyday cargo make tasks
 
-[tasks.format]
-install_crate = "rustfmt"
-command = "cargo"
-args = ["fmt", "--", "--emit=files"]
-
-[tasks.clean]
-command = "cargo"
-args = ["clean"]
-
 [tasks.build]
-env = { PKG_CONFIG_ALLOW_CROSS="1", CC_x86_64_unknown_linux_musl="x86_64-linux-musl-gcc", CXX_x86_64_unknown_linux_musl="x86_64-linux-musl-g++" }
 command = "cargo"
 args = ["build", "--release", "--target=x86_64-unknown-linux-musl"]
 dependencies = ["format", "clean"]
+
+[tasks.build.linux] # ~ubuntu
+env = { PKG_CONFIG_ALLOW_CROSS=true, CC_x86_64_unknown_linux_musl="musl-gcc", CXX_x86_64_unknown_linux_musl="g++" }
+
+[tasks.build.mac]
+env = { PKG_CONFIG_ALLOW_CROSS=true, CC_x86_64_unknown_linux_musl="x86_64-linux-musl-gcc", CXX_x86_64_unknown_linux_musl="x86_64-linux-musl-g++" }
 
 [tasks.rename-exec]
 command = "cp"
 args = ["./target/x86_64-unknown-linux-musl/release/lambda-wasmtime", "./target/x86_64-unknown-linux-musl/release/bootstrap"]
 
 [tasks.bundle]
+env = { ZIP_FILE="./lambda_wasmtime.zip" }
 command = "zip"
-args = ["-mj", "./lambda_wasmtime.zip", "./target/x86_64-unknown-linux-musl/release/bootstrap"]
+args = ["-mj", "${ZIP_FILE}", "./target/x86_64-unknown-linux-musl/release/bootstrap"]
 dependencies = ["rename-exec"]
 
-[tasks.all]
+[tasks.layer]
 dependencies = ["build", "bundle"]

@@ -1,3 +1,5 @@
+// TODO: provide docs that can be build with cargo
+
 //! CLI tool to use the functions provided by the [wasmtime](../wasmtime/index.html)
 //! crate.
 //!
