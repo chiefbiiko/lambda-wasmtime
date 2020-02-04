@@ -5,13 +5,13 @@ use serde_json::{from_str as from_json, Value};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 fn process(event: &str, mut thumbnail_buf: Vec<u8>) -> AnyhowResult<Vec<u8>> {
-    load_image_from_memory(
-        &from_base64(
-            from_json::<Value>(event)?
-                .get("data").ok_or(anyhow!("missing property \"data\""))?
-                .as_str().ok_or(anyhow!("invalid string"))?,
-        )?,
-    )?
+    load_image_from_memory(&from_base64(
+        from_json::<Value>(event)?
+            .get("data")
+            .ok_or(anyhow!("missing property \"data\""))?
+            .as_str()
+            .ok_or(anyhow!("invalid string"))?,
+    )?)?
     .thumbnail(128, 128)
     .write_to(&mut thumbnail_buf, PNG)?;
 

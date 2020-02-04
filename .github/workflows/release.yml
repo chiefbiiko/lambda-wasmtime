@@ -6,7 +6,7 @@ on:
     - 'v*'
 
 env:
-  ZIP_FILE: runtime.zip
+  RUNTIME_ZIP_FILE_NAME: runtime.zip
 
 jobs:
   publish:
@@ -23,14 +23,14 @@ jobs:
       - name: install cargo-make
         run: |
           apt-get update -y
-          apt-get install build-essential libssl-dev pkg-config -y
+          apt-get install -y build-essential libssl-dev pkg-config
           cargo install --debug cargo-make
       # - name: install cargo-make
       #   uses: davidB/rust-cargo-make@v1
       - name: install custom cargo make deps
         run: cargo make install-deps
       - name: build and bundle
-        run: cargo make runtime --env ZIP_FILE="$ZIP_FILE"
+        run: cargo make --env RUNTIME_ZIP_FILE_NAME="$RUNTIME_ZIP_FILE_NAME" runtime
       - name: create release
         id: create_release
         uses: actions/create-release@v1.0.0
@@ -47,6 +47,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.ZIP_FILE }}
+          asset_path: ${{ env.RUNTIME_ZIP_FILE_NAME }}
           asset_name: lambda_wasmtime_${{ steps.get_version.outputs.version }}.zip
           asset_content_type: application/zip
