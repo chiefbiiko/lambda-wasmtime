@@ -1,0 +1,35 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - master
+      - embedded-wasmtime
+  release:
+    types:
+      - created
+
+env:
+  ZIP_FILE: runtime.zip
+
+jobs:
+  test:
+    name: test the runtime on AWS Lambda
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v1.0.0
+        with:
+          ref: ${{ github.ref }}
+      - name: install cargo-make
+        run: |
+          apt-get update -y
+          apt-get install build-essential libssl-dev pkg-config -y
+          cargo install --debug cargo-make
+      # - name: install cargo-make
+      #   uses: davidB/rust-cargo-make@v1
+      - name: install custom cargo make deps
+        run: cargo make install-deps
+      - name: build and bundle
+        run: cargo make runtime --env ZIP_FILE="$ZIP_FILE"
+      - name: TODO: deploy and test
