@@ -24,12 +24,13 @@ jobs:
         run: |
           apt-get update -y
           apt-get install build-essential libssl-dev pkg-config -y
-          cargo install cargo-make
-      # - uses: davidB/rust-cargo-make@v1
+          cargo install --debug cargo-make
+      # - name: install cargo-make
+      #   uses: davidB/rust-cargo-make@v1
       - name: install custom cargo make deps
         run: cargo make install-deps
       - name: build and bundle
-        run: cargo make layer --env ZIP_FILE="$ZIP_FILE"
+        run: cargo make runtime --env ZIP_FILE="$ZIP_FILE"
       - name: create release
         id: create_release
         uses: actions/create-release@v1.0.0

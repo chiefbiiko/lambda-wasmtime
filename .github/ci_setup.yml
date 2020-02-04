@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Setup for testing lambda-wasmtime in the AWS cloud
+Resources:
+  User:
+    Type: AWS::IAM::User
+    Properties:
+      Policies:
+        - PolicyName: LambdaTestingPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: AllowLambdaFullAccess
+                Effect: Allow
+                Action: lambda:*
+                Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:*
+  AccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      Status: Active
+      UserName: !Ref User
+Outputs:
+  UserArn:
+    Description: IAM user with full access to DynamoDB
+    Value: !GetAtt User.Arn
+  UserAccessKeyId:
+    Description: Access key id of the IAM user
+    Value: !Ref AccessKey
+  UserSecretAccessKey:
+    Description: Secret access key of the IAM user
+    Value: !GetAtt AccessKey.SecretAccessKey
