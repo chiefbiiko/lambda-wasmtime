@@ -119,7 +119,7 @@ jobs:
             --payload "{\"data\":\"$(base64 $PAYLOAD_PNG_IMAGE_PATH)\"}" \
             /dev/stdout 1>/dev/null \
             | \
-            jq '.Payload' | \
+            jq '.Payload.data' | \
             base64 --decode \
             > thumbnail.png
       - name: check image and thumbnail sizes
