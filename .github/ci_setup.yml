@@ -12,7 +12,7 @@ Resources:
               - Sid: AllowLambdaFullAccess
                 Effect: Allow
                 Action: lambda:*
-                Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:*
+                Resource: "*"
   AccessKey:
     Type: AWS::IAM::AccessKey
     Properties:
