@@ -24,12 +24,11 @@ jobs:
         with:
           ref: ${{ github.ref }}
       - name: install cargo-make
-        run: |
-          apt-get update -y
-          apt-get install -y build-essential libssl-dev pkg-config
-          cargo install --debug cargo-make
-      # - name: install cargo-make
-      #   uses: davidB/rust-cargo-make@v1
+      #   run: |
+      #     apt-get update -y
+      #     apt-get install -y build-essential libssl-dev pkg-config
+      #     cargo install --debug cargo-make
+        uses: davidB/rust-cargo-make@v1
       - name: install custom cargo make deps
         run: cargo make install-deps
       - name: build and bundle
@@ -48,12 +47,11 @@ jobs:
         with:
           ref: ${{ github.ref }}
       - name: install cargo-make
-        run: |
-          apt-get update -y
-          apt-get install -y build-essential libssl-dev pkg-config
-          cargo install --debug cargo-make
-      # - name: install cargo-make
-      #   uses: davidB/rust-cargo-make@v1
+        # run: |
+        #   apt-get update -y
+        #   apt-get install -y build-essential libssl-dev pkg-config
+        #   cargo install --debug cargo-make
+        uses: davidB/rust-cargo-make@v1
       - name: compile the demo to wasm and zipup a lambda bundle
         run: cargo make --makefile demo/Makefile.toml --env DEMO_ZIP_FILE_NAME=${{ env.DEMO_ZIP_FILE_NAME }} bundle
       - name: upload the demo bundle artifact
