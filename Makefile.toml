@@ -4,9 +4,7 @@
 # 4 build run: cargo make runtime
 
 [env]
-RUNTIME_ZIP_FILE_NAME = "${RUNTIME_ZIP_FILE_NAME:-runtime.zip}"
-
-# 1time `cargo make install-deps` 4 setup
+RUNTIME_ZIP_FILE_NAME = { value = "runtime.zip", condition = { env_not_set = ["RUNTIME_ZIP_FILE_NAME"] } }
 
 [tasks.install-target]
 command = "rustup"
@@ -32,25 +30,23 @@ args = ["install", "FiloSottile/musl-cross/musl-cross"]
 [tasks.install-deps]
 dependencies = ["install-target", "install-musl"]
 
-# everyday cargo-make tasks
-
 [tasks.build]
+env = { CARGO_BUILD_TARGET="x86_64-unknown-linux-musl" }
 command = "cargo"
 args = ["build", "--release", "--target=x86_64-unknown-linux-musl"]
 dependencies = ["format", "clean"]
 
 [tasks.build.linux]
-env = { PKG_CONFIG_ALLOW_CROSS=true, CC_x86_64_unknown_linux_musl="musl-gcc", CXX_x86_64_unknown_linux_musl="g++" }
+env = { PKG_CONFIG_ALLOW_CROSS=true, CC_x86_64_unknown_linux_musl="musl-gcc", CXX_x86_64_unknown_linux_musl="g++", CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER="musl-gcc" }
 
 [tasks.build.mac]
-env = { PKG_CONFIG_ALLOW_CROSS=true, CC_x86_64_unknown_linux_musl="x86_64-linux-musl-gcc", CXX_x86_64_unknown_linux_musl="x86_64-linux-musl-g++", CARGO_BUILD_TARGET="x86_64-unknown-linux-musl", CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER="x86_64-linux-musl-gcc" }
+env = { PKG_CONFIG_ALLOW_CROSS=true, CC_x86_64_unknown_linux_musl="x86_64-linux-musl-gcc", CXX_x86_64_unknown_linux_musl="x86_64-linux-musl-g++", CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER="x86_64-linux-musl-gcc" }
 
 [tasks.rename-exec]
 command = "cp"
 args = ["./target/x86_64-unknown-linux-musl/release/lambda-wasmtime", "./target/x86_64-unknown-linux-musl/release/bootstrap"]
 
 [tasks.bundle]
-env = { RUNTIME_ZIP_FILE_NAME="lambda_wasmtime.zip" }
 command = "zip"
 args = ["-mj", "./${RUNTIME_ZIP_FILE_NAME}", "./target/x86_64-unknown-linux-musl/release/bootstrap"]
 dependencies = ["rename-exec"]

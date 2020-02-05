@@ -3,7 +3,7 @@
 # 4 build run: cargo make demo
 
 [env]
-DEMO_ZIP_FILE_NAME="${DEMO_ZIP_FILE_NAME:-demo.zip}"
+DEMO_ZIP_FILE_NAME = { value = "demo.zip", condition = { env_not_set = ["DEMO_ZIP_FILE_NAME"] } }
 
 # everyday cargo-make tasks
 
