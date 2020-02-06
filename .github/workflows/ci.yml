@@ -34,7 +34,7 @@ jobs:
       #     cargo install --debug cargo-make
         uses: davidB/rust-cargo-make@v1
       - name: install custom cargo make deps
-        run: sudo "PATH=$PATH" "RUNTIME_ZIP_FILE_NAME=$RUNTIME_ZIP_FILE_NAME" cargo make install-deps
+        run: sudo "PATH=${{ env.PATH }}" "RUNTIME_ZIP_FILE_NAME=${{ env.RUNTIME_ZIP_FILE_NAME }}" cargo make install-deps
       - name: build and bundle
         run: cargo make --env RUNTIME_ZIP_FILE_NAME=${{ env.RUNTIME_ZIP_FILE_NAME }} runtime
       - name: upload the runtime layer artifact
