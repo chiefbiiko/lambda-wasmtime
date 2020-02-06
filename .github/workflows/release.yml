@@ -3,7 +3,7 @@ name: release
 on:
   push:
     tags:
-    - 'v*'
+      - 'v*'
 
 env:
   RUNTIME_ZIP_FILE_NAME: runtime.zip
@@ -24,6 +24,8 @@ jobs:
         uses: hecrj/setup-rust-action@v1
         with:
           rust-version: stable
+      - name: show rust backtraces
+        run: export RUST_BACKTRACE=1
       - name: install cargo-make
         # run: |
         #   apt-get update -y

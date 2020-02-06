@@ -1,6 +1,9 @@
 name: demo
 
-on: [push, pull_request, release]
+on:
+  push:
+    branches:
+      - master
 
 jobs:
   check:
