@@ -1,0 +1,27 @@
+# lambda-wasmtime build spec 4 cargo-make
+# 4 the Dockerfile image
+# 4 build run: cargo make runtime
+
+[env]
+RUNTIME_ZIP_FILE_NAME = { value = "runtime.zip", condition = { env_not_set = ["RUNTIME_ZIP_FILE_NAME"] } }
+
+[tasks.build]
+env = { CARGO_BUILD_TARGET="x86_64-unknown-linux-musl" }
+command = "cargo"
+args = ["build", "--release", "--target=x86_64-unknown-linux-musl"]
+dependencies = ["format", "clean"]
+
+[tasks.build.linux]
+env = { PKG_CONFIG_ALLOW_CROSS=true, CC_x86_64_unknown_linux_musl="clang", CXX_x86_64_unknown_linux_musl="clang++", CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER="x86_64-amazon-linux-g++48" }
+
+[tasks.rename-exec]
+command = "cp"
+args = ["./target/x86_64-unknown-linux-musl/release/lambda-wasmtime", "./target/x86_64-unknown-linux-musl/release/bootstrap"]
+
+[tasks.bundle]
+command = "zip"
+args = ["-mj", "./${RUNTIME_ZIP_FILE_NAME}", "./target/x86_64-unknown-linux-musl/release/bootstrap"]
+dependencies = ["rename-exec"]
+
+[tasks.runtime]
+dependencies = ["build", "bundle"]
