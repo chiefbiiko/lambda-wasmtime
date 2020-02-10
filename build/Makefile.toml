@@ -1,27 +1,25 @@
 # lambda-wasmtime build spec 4 cargo-make
-# TODO: make this makefile work on the build image and macos (tasks.setup-macos)
+# 4 mac and the ./Dockerfile image
 # 4 build run: cargo make runtime
 
 [env]
 RUNTIME_ZIP_FILE_NAME = { value = "runtime.zip", condition = { env_not_set = ["RUNTIME_ZIP_FILE_NAME"] } }
 
+[tasks.setup-mac.mac]
+script = [
+'''
+brew install FiloSottile/musl-cross/musl-cross # takes 4ever
+rustup target add x86_64-unknown-linux-musl
+'''
+]
+
 [tasks.build]
-# env = { PKG_CONFIG_ALLOW_CROSS=true, CARGO_BUILD_TARGET="x86_64-unknown-linux-musl", CC_x86_64_unknown_linux_musl="clang", CXX_x86_64_unknown_linux_musl="clang++", CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER="ld.lld" }
-### CROSS_COMPILE=x86_64-linux-musl-
-# env = { PKG_CONFIG_ALLOW_CROSS=true, CARGO_BUILD_TARGET="x86_64-unknown-linux-musl", CC_x86_64_unknown_linux_musl="clang", CXX_x86_64_unknown_linux_musl="clang++", CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER="clang++" }
-# env = { CARGO_BUILD_TARGET="x86_64-unknown-linux-gnu", CC_x86_64_unknown_linux_gnu="clang", CXX_x86_64_unknown_linux_gnu="clang++", CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER="clang++" }
 command = "cargo"
-args = ["build", "--release"]#, "--target=x86_64-unknown-linux-musl"]
+args = ["build", "--release"]
 dependencies = ["format", "clean"]
 
-# [tasks.rename-exec]
-# command = "cp"
-# args = ["./target/x86_64-unknown-linux-musl/release/lambda-wasmtime", "./target/x86_64-unknown-linux-musl/release/bootstrap"]
-#
-# [tasks.bundle]
-# command = "zip"
-# args = ["-mj", "./${RUNTIME_ZIP_FILE_NAME}", "./target/x86_64-unknown-linux-musl/release/bootstrap"]
-# dependencies = ["rename-exec"]
+[tasks.build.mac]
+env = { PKG_CONFIG_ALLOW_CROSS=true, CARGO_BUILD_TARGET="x86_64-unknown-linux-musl", CC_x86_64_unknown_linux_musl="x86_64-linux-musl-gcc", CXX_x86_64_unknown_linux_musl="x86_64-linux-musl-g++", CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER="x86_64-linux-musl-gcc" }
 
 [tasks.rename-exec]
 command = "cp"
