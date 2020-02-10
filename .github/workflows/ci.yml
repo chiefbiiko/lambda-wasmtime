@@ -13,32 +13,33 @@ env:
   RUNTIME_ZIP_FILE_NAME: runtime.zip
   DEMO_ZIP_FILE_NAME: demo.zip
   PAYLOAD_PNG_IMAGE_PATH: demo/luigi.png
+  LAMBDA_WASMTIME_VERSION: 0.3.3
+  _LAMBDA_WASMTIME_VERSION: ${LAMBDA_WASMTIME_VERSION//./}
+  TAG: docker.pkg.github.com/${{ env.GITHUB_REPOSITORY }}/runtime-builder:${{ env.LAMBDA_WASMTIME_VERSION }}-amazonlinux2
 
 jobs:
+  build_image:
+    name: build and publish the docker build image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1.0.0
+      - name: build the build image
+        run: docker build --file=./build/Dockerfile --tag="$TAG" .
+      - name: docker.pkg.github.com login
+        run: docker login docker.pkg.github.com --username="$GITHUB_ACTOR" --password="$GITHUB_TOKEN"
+      - name: publish the build image 2 docker.pkg.github.com
+        run: docker push "$TAG"
   build_runtime:
     name: build the runtime
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
-      - name: checkout
-        uses: actions/checkout@v1.0.0
-        with:
-          ref: ${{ github.ref }}
-      - name: install rust, cargo, rustup n more
-        uses: hecrj/setup-rust-action@v1
-        with:
-          rust-version: stable
-      - name: show rust backtraces
-        run: export RUST_BACKTRACE=1
-      - name: install cargo-make
-      #   run: |
-      #     apt-get update -y
-      #     apt-get install -y build-essential libssl-dev pkg-config
-      #     cargo install --debug cargo-make
-        uses: davidB/rust-cargo-make@v1
-      - name: install custom cargo make deps
-        run: sudo "PATH=${{ env.PATH }}" "RUNTIME_ZIP_FILE_NAME=${{ env.RUNTIME_ZIP_FILE_NAME }}" cargo make install-deps
-      - name: build and bundle
-        run: cargo make --env RUNTIME_ZIP_FILE_NAME=${{ env.RUNTIME_ZIP_FILE_NAME }} runtime
+      - uses: actions/checkout@v2.0.0
+      - name: docker.pkg.github.com login
+        run: docker login docker.pkg.github.com --username="$GITHUB_ACTOR" --password="$GITHUB_TOKEN"
+      - name: pull the build image 4rom docker.pkg.github.com
+        run: docker pull "$TAG"
+      - name: build the runtime in the custom build container
+        run: docker run --rm --interactive --tty --volume="$PWD:/home" --env="RUNTIME_ZIP_FILE_NAME=$RUNTIME_ZIP_FILE_NAME" "$TAG"
       - name: upload the runtime layer artifact
         uses: actions/upload-artifact@v1
         with:
@@ -46,26 +47,11 @@ jobs:
           path: ${{ env.RUNTIME_ZIP_FILE_NAME }}
   build_demo:
     name: build the demo
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
-      - name: checkout
-        uses: actions/checkout@v1.0.0
-        with:
-          ref: ${{ github.ref }}
-      - name: install rust, cargo, rustup n more
-        uses: hecrj/setup-rust-action@v1
-        with:
-          rust-version: stable
-      - name: show rust backtraces
-        run: export RUST_BACKTRACE=1
-      - name: install cargo-make
-        # run: |
-        #   apt-get update -y
-        #   apt-get install -y build-essential libssl-dev pkg-config
-        #   cargo install --debug cargo-make
-        uses: davidB/rust-cargo-make@v1
-      - name: compile the demo to wasm and zipup a lambda bundle
-        run: cargo make --makefile demo/Makefile.toml --env DEMO_ZIP_FILE_NAME=${{ env.DEMO_ZIP_FILE_NAME }} bundle
+      - uses: actions/checkout@v2.0.0
+      - name: build the demo in the custom build container
+        run: docker run --rm --interactive --tty --volume="$PWD:/home" --env="RUNTIME_ZIP_FILE_NAME=$RUNTIME_ZIP_FILE_NAME" "$TAG" cargo make --cwd=demo --env=DEMO_ZIP_FILE_NAME=${{ env.DEMO_ZIP_FILE_NAME }} bundle
       - name: upload the demo bundle artifact
         uses: actions/upload-artifact@v1
         with:
@@ -73,15 +59,12 @@ jobs:
           path: demo/${{ env.DEMO_ZIP_FILE_NAME }}
   test:
     name: test the runtime on AWS Lambda
-    needs: 
+    needs:
       - build_runtime
       - build_demo
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
-        uses: actions/checkout@v1.0.0
-        with:
-          ref: ${{ github.ref }}
+      - uses: actions/checkout@v2.0.0
       - name: download the runtime layer artifact
         uses: actions/download-artifact@v1
         with:
@@ -90,9 +73,6 @@ jobs:
         uses: actions/download-artifact@v1
         with:
           name: demo
-      - name: get version
-        id: get_version
-        run: echo ::set-output name=version::${GITHUB_REF/refs\/tags\//}
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -103,37 +83,39 @@ jobs:
         id: publish_layer
         run: |
           runtime_arn="$(aws lambda publish-layer-version \
-            --layer-name lambda_wasmtime_${{ steps.get_version.outputs.version }} \
-            --description "lambda-wasmtime runtime ${{ steps.get_version.outputs.version }}" \
-            --compatible-runtimes provided \
-            --license-info MIT \
-            --zip-file fileb://runtime/${{ env.RUNTIME_ZIP_FILE_NAME }} \
+            --layer-name=lambda_wasmtime_${{ env._LAMBDA_WASMTIME_VERSION }} \
+            --description="lambda-wasmtime runtime ${{ env.LAMBDA_WASMTIME_VERSION }}" \
+            --compatible-runtimes=provided \
+            --license-info=MIT \
+            --zip-file=fileb://runtime/${{ env.RUNTIME_ZIP_FILE_NAME }} \
             | \
             jq '.LayerVersionArn')"
             echo ::set-output name=runtime_arn::$runtime_arn
       - name: deploy the demo lambda
         run: |
           aws lambda create-function \
-            --function-name LambdaWasmtimeTestFunction \
-            --runtime provided \
-            --role arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole \
-            --handler demo.handler \
-            --description "lambda-wasmtime test function" \
-            --timeout 3 \
-            --memory-size 128 \
-            --layers ${{ steps.publish_layer.outputs.runtime_arn }} \
-            --zip-file fileb://demo/${{ env.DEMO_ZIP_FILE_NAME }}
-      - name: invoke lambda
+            --function-name=LambdaWasmtimeTestFunction \
+            --runtime=provided \
+            --role=${{ secrets.LAMBDA_EXECUTION_ROLE_ARN }} \
+            --handler=demo.handler \
+            --description="lambda-wasmtime test function" \
+            --timeout=3 \
+            --memory-size=128 \
+            --layers=${{ steps.publish_layer.outputs.runtime_arn }} \
+            --zip-file=fileb://demo/${{ env.DEMO_ZIP_FILE_NAME }}
+      - name: invoke the demo lambda
         run: |
           aws lambda invoke \
-            --function-name LambdaWasmtimeTestFunction \
-            --log-type Tail \
-            --payload "{\"data\":\"$(base64 $PAYLOAD_PNG_IMAGE_PATH)\"}" \
+            --function-name=LambdaWasmtimeTestFunction \
+            --log-type=Tail \
+            --payload="{\"data\":\"$(base64 $PAYLOAD_PNG_IMAGE_PATH)\"}" \
             /dev/stdout 1>/dev/null \
             | \
             jq '.Payload.data' | \
             base64 --decode \
             > thumbnail.png
+      - name: delete the demo lambda
+        run: aws lambda delete-function --function-name=LambdaWasmtimeTestFunction
       - name: check image and thumbnail sizes
         run: |
           image_size="$(wc -c $PAYLOAD_PNG_IMAGE_PATH | grep -Eo '[0-9]+')"
