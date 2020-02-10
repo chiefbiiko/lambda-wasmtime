@@ -1,6 +1,18 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Setup for testing lambda-wasmtime in the AWS cloud
 Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
   User:
     Type: AWS::IAM::User
     Properties:
@@ -19,6 +31,9 @@ Resources:
       Status: Active
       UserName: !Ref User
 Outputs:
+  LambdaExecutionRoleArn:
+    Description: ARN of the lambda execution role
+    Value: !GetAtt LambdaExecutionRole.Arn
   UserArn:
     Description: IAM user with full access to DynamoDB
     Value: !GetAtt User.Arn
