@@ -37,6 +37,7 @@ jobs:
         run: docker push "$DOCKER_BUILD_IMAGE_TAG"
   build_runtime:
     name: build the runtime
+    needs: build_image
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2.0.0
@@ -61,9 +62,11 @@ jobs:
           path: ${{ env.RUNTIME_ZIP_FILE_NAME }}
   build_demo:
     name: build the demo
+    needs: build_image
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2.0.0
+      - name: docker.pkg.github.com login
         run: |
           docker login docker.pkg.github.com \
             --username="$GITHUB_ACTOR" \
