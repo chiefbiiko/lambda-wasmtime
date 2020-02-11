@@ -12,7 +12,6 @@ on:
 env:
   RUNTIME_ZIP_FILE_NAME: runtime.zip
   DEMO_ZIP_FILE_NAME: demo.zip
-  PAYLOAD_PNG_IMAGE_PATH: demo/luigi.png
   LAMBDA_WASMTIME_VERSION: 0.3.3
   _LAMBDA_WASMTIME_VERSION: ${LAMBDA_WASMTIME_VERSION//./}
   DOCKER_BUILD_IMAGE_TAG: docker.pkg.github.com/chiefbiiko/lambda-wasmtime/runtime-builder:0.3.3-amazonlinux2
@@ -27,14 +26,14 @@ jobs:
         run: |
           docker build \
             --file=./build/Dockerfile \
-            --tag="$DOCKER_BUILD_IMAGE_TAG" .
+            --tag=${{ env.DOCKER_BUILD_IMAGE_TAG }} .
       - name: docker.pkg.github.com login
         run: |
           docker login docker.pkg.github.com \
-            --username="$GITHUB_ACTOR" \
-            --password="$GITHUB_TOKEN"
+            --username=${{ env.GITHUB_ACTOR }} \
+            --password=${{ env.GITHUB_TOKEN }}
       - name: publish the build image 2 docker.pkg.github.com
-        run: docker push "$DOCKER_BUILD_IMAGE_TAG"
+        run: docker push ${{ env.DOCKER_BUILD_IMAGE_TAG }}
   build_runtime:
     name: build the runtime
     needs: build_image
@@ -44,17 +43,17 @@ jobs:
       - name: docker.pkg.github.com login
         run: |
           docker login docker.pkg.github.com \
-            --username="$GITHUB_ACTOR" \
-            --password="$GITHUB_TOKEN"
+            --username=${{ env.GITHUB_ACTOR }} \
+            --password=${{ env.GITHUB_TOKEN }}
       - name: pull the build image 4rom docker.pkg.github.com
-        run: docker pull "$DOCKER_BUILD_IMAGE_TAG"
+        run: docker pull ${{ env.DOCKER_BUILD_IMAGE_TAG }}
       - name: build the runtime in the custom build container
         run: |
           docker run \
             --rm \
-            --volume="$PWD:/home" \
-            --env="RUNTIME_ZIP_FILE_NAME=$RUNTIME_ZIP_FILE_NAME" \
-            "$DOCKER_BUILD_IMAGE_TAG"
+            --volume=${{ env.PWD }}:/home \
+            --env=RUNTIME_ZIP_FILE_NAME=${{ env.RUNTIME_ZIP_FILE_NAME }} \
+            ${{ env.DOCKER_BUILD_IMAGE_TAG }}
       - name: upload the runtime layer artifact
         uses: actions/upload-artifact@v1
         with:
@@ -69,15 +68,15 @@ jobs:
       - name: docker.pkg.github.com login
         run: |
           docker login docker.pkg.github.com \
-            --username="$GITHUB_ACTOR" \
-            --password="$GITHUB_TOKEN"
+            --username=${{ env.GITHUB_ACTOR }} \
+            --password=${{ env.GITHUB_TOKEN }}
       - name: build the demo in the custom build container
         run: |
           docker run \
             --rm \
-            --volume="$PWD:/home" \
-            --env="RUNTIME_ZIP_FILE_NAME=$RUNTIME_ZIP_FILE_NAME" \
-            "$DOCKER_BUILD_IMAGE_TAG" \
+            --volume=${{ env.PWD }}:/home \
+            --env=RUNTIME_ZIP_FILE_NAME=${{ env.RUNTIME_ZIP_FILE_NAME }} \
+            ${{ env.DOCKER_BUILD_IMAGE_TAG }} \
               cargo make \
                 --cwd=demo \
                 --env=DEMO_ZIP_FILE_NAME=${{ env.DEMO_ZIP_FILE_NAME }} \
@@ -138,7 +137,7 @@ jobs:
           aws lambda invoke \
             --function-name=LambdaWasmtimeTestFunction \
             --log-type=Tail \
-            --payload="{\"data\":\"$(base64 $PAYLOAD_PNG_IMAGE_PATH)\"}" \
+            --payload="{\"data\":\"$(base64 ./demo/luigi.png)\"}" \
             /dev/stdout 1>/dev/null \
             | \
             jq '.Payload.data' | \
@@ -150,6 +149,6 @@ jobs:
             --function-name=LambdaWasmtimeTestFunction
       - name: check image and thumbnail sizes
         run: |
-          image_size="$(wc -c $PAYLOAD_PNG_IMAGE_PATH | grep -Eo '[0-9]+')"
+          image_size="$(wc -c ./demo/luigi.png | grep -Eo '[0-9]+')"
           thumbnail_size="$(wc -c thumbnail.png | grep -Eo '[0-9]+')"
           if [[ ! $thumbnail_size -lt $image_size ]]; then exit 1; fi
