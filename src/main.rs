@@ -614,7 +614,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 //
 // async fn main() -> AnyHowResult<()> {
 //     // TODO: add an error trap to post 2 api/init/error
-//     let version = String::from(env!("LAMBDA_WASMTIME_VERSION"));
+//     let version = String::from(env!("VERSION"));
 //     let warning = "warning .* is experimental and may break in the future";
 //     let api = format!("http://{}/2018-06-01/runtime", var("AWS_LAMBDA_RUNTIME_API")?);
 //     let api_next = format!("{}/invocation/next", api);
