@@ -31,7 +31,7 @@ jobs:
         run: |
           docker login docker.pkg.github.com \
             --username=${{ env.GITHUB_ACTOR }} \
-            --password=${{ env.GITHUB_TOKEN }}
+            --password=${{ secrets.GITHUB_TOKEN }}
       - name: publish the build image 2 docker.pkg.github.com
         run: docker push ${{ env.DOCKER_BUILD_IMAGE_TAG }}
   build_runtime:
@@ -44,7 +44,7 @@ jobs:
         run: |
           docker login docker.pkg.github.com \
             --username=${{ env.GITHUB_ACTOR }} \
-            --password=${{ env.GITHUB_TOKEN }}
+            --password=${{ secrets.GITHUB_TOKEN }}
       - name: pull the build image 4rom docker.pkg.github.com
         run: docker pull ${{ env.DOCKER_BUILD_IMAGE_TAG }}
       - name: build the runtime in the custom build container
@@ -69,7 +69,7 @@ jobs:
         run: |
           docker login docker.pkg.github.com \
             --username=${{ env.GITHUB_ACTOR }} \
-            --password=${{ env.GITHUB_TOKEN }}
+            --password=${{ secrets.GITHUB_TOKEN }}
       - name: build the demo in the custom build container
         run: |
           docker run \
