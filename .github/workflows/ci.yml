@@ -15,7 +15,7 @@ env:
   PAYLOAD_PNG_IMAGE_PATH: demo/luigi.png
   LAMBDA_WASMTIME_VERSION: 0.3.3
   _LAMBDA_WASMTIME_VERSION: ${LAMBDA_WASMTIME_VERSION//./}
-  DOCKER_BUILD_IMAGE_TAG: docker.pkg.github.com/${GITHUB_REPOSITORY}/runtime-builder:${LAMBDA_WASMTIME_VERSION}-amazonlinux2
+  DOCKER_BUILD_IMAGE_TAG: "docker.pkg.github.com/$GITHUB_REPOSITORY/runtime-builder:$LAMBDA_WASMTIME_VERSION-amazonlinux2"
 
 jobs:
   build_image:
