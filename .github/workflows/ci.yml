@@ -32,7 +32,7 @@ jobs:
           echo ${{ secrets.GITHUB_TOKEN }} \
           | \
           docker login docker.pkg.github.com \
-            --username=${{ env.GITHUB_ACTOR }} \
+            --username=$GITHUB_ACTOR \
             --password-stdin
       - name: publish the build image 2 docker.pkg.github.com
         run: docker push ${{ env.DOCKER_BUILD_IMAGE_TAG }}
@@ -47,7 +47,7 @@ jobs:
           echo ${{ secrets.GITHUB_TOKEN }} \
           | \
           docker login docker.pkg.github.com \
-            --username=${{ env.GITHUB_ACTOR }} \
+            --username=$GITHUB_ACTOR \
             --password-stdin
       - name: pull the build image 4rom docker.pkg.github.com
         run: docker pull ${{ env.DOCKER_BUILD_IMAGE_TAG }}
@@ -74,13 +74,15 @@ jobs:
           echo ${{ secrets.GITHUB_TOKEN }} \
           | \
           docker login docker.pkg.github.com \
-            --username=${{ env.GITHUB_ACTOR }} \
+            --username=$GITHUB_ACTOR \
             --password-stdin
+      - name: pull the build image 4rom docker.pkg.github.com
+        run: docker pull ${{ env.DOCKER_BUILD_IMAGE_TAG }}
       - name: build the demo in the custom build container
         run: |
           docker run \
             --rm \
-            --volume=${{ env.PWD }}:/home \
+            --volume=$PWD:/home \
             --env=RUNTIME_ZIP_FILE_NAME=${{ env.RUNTIME_ZIP_FILE_NAME }} \
             ${{ env.DOCKER_BUILD_IMAGE_TAG }} \
               cargo make \
@@ -117,7 +119,7 @@ jobs:
       - name: publish a new runtime layer version
         id: publish_layer
         run: |
-          runtime_arn="$(
+          runtime_arn=$(
             aws lambda publish-layer-version \
               --layer-name=lambda_wasmtime_${{ env.VERSION_DOTLESS }} \
               --description="lambda-wasmtime ${{ env.VERSION }}" \
@@ -125,8 +127,9 @@ jobs:
               --license-info=MIT \
               --zip-file=fileb://runtime/${{ env.RUNTIME_ZIP_FILE_NAME }} \
             | \
-            jq '.LayerVersionArn')"
-            echo ::set-output name=runtime_arn::$runtime_arn
+            jq '.LayerVersionArn'
+          )
+          echo ::set-output name=runtime_arn::$runtime_arn
       - name: deploy the demo lambda
         run: |
           aws lambda create-function \
@@ -146,9 +149,11 @@ jobs:
             --log-type=Tail \
             --payload="{\"data\":\"$(base64 ./demo/luigi.png)\"}" \
             /dev/stdout 1>/dev/null \
-            | \
-            jq '.Payload.data' | \
-            base64 --decode \
+          | \
+          jq '.Payload.data' \
+          | \
+          base64 \
+            --decode \
             > thumbnail.png
       - name: delete the demo lambda
         run: |

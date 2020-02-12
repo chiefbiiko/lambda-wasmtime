@@ -25,6 +25,10 @@ Resources:
                 Effect: Allow
                 Action: lambda:*
                 Resource: "*"
+              - Sid: AllowPassingLambdaExecutionRole
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt LambdaExecutionRole.Arn
   AccessKey:
     Type: AWS::IAM::AccessKey
     Properties:
