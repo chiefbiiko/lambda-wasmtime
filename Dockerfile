@@ -1,15 +1,13 @@
-# usage (from ..): docker run --rm -it -v "$PWD:/home" [IMAGE]
+# usage: docker run -v "$PWD:/home" $IMAGE
 
-# TODO:
+FROM amazonlinux:2.0.20191217.0
 
-FROM amazonlinux:2
-
-LABEL org.opencontainers.image.url="https://github.com/chiefbiiko/lambda-wasmtime" \
-  org.opencontainers.image.version="0.3.3" \
-  org.opencontainers.image.title="lambda-wasmtime-build-image" \
-  org.opencontainers.image.description="Image for building the lambda-wasmtime runtime" \
-  org.opencontainers.image.authors="Noah Anabiik Schwarz" \
-  org.opencontainers.image.licenses="MIT"
+LABEL url="https://github.com/chiefbiiko/lambda-wasmtime" \
+  version="0.3.3" \
+  title="runtime-builder" \
+  description="Image for building the lambda-wasmtime runtime" \
+  maintainer="Noah Anabiik Schwarz" \
+  license="MIT"
 
 ENV RUST_VERSION=1.41.0 \
   CARGO_MAKE_VERSION=0.27.0 \
@@ -23,6 +21,7 @@ ENV RUST_VERSION=1.41.0 \
 
 RUN yum install -y clang clang-libs clang-devel cmake3 make ncurses-compat-libs ncurses-devel openssl-devel unzip zip && \
   ln -s /usr/bin/cmake3 /usr/bin/cmake && \
+  rm -rf /var/cache/yum && \
   curl -sSf https://sh.rustup.rs | sh -s -- --default-toolchain $RUST_VERSION -y && \
   rustup target add x86_64-unknown-linux-musl && \
   temp_file=$(mktemp) && temp_dir=$(mktemp -d) && \
@@ -31,13 +30,15 @@ RUN yum install -y clang clang-libs clang-devel cmake3 make ncurses-compat-libs 
   mv $temp_dir/cargo-make-v$CARGO_MAKE_VERSION-x86_64-unknown-linux-musl/cargo-make /root/.cargo/bin/cargo-make && \
   rm $temp_file && rm -rf $temp_dir
 
+# TODO
+# USER abc
+
 VOLUME /home
 
 WORKDIR /home
 
-# TODO: only COPY what we need from the build context into /home
 COPY Cargo.toml /home/Cargo.toml
 
 COPY src /home/src/
 
-CMD cargo make runtime
+CMD ["cargo", "make", "runtime"]
