@@ -10,6 +10,7 @@ on:
       - created
 
 env:
+  AWS_REGION: us-east-1
   RUNTIME_ZIP_FILE_NAME: runtime.zip
   DEMO_ZIP_FILE_NAME: demo.zip
   VERSION: 0.3.3
@@ -26,7 +27,8 @@ jobs:
         run: |
           docker build \
             --file=./Dockerfile \
-            --tag=${{ env.DOCKER_BUILD_IMAGE_TAG }} .
+            --tag=${{ env.DOCKER_BUILD_IMAGE_TAG }} \
+            .
       - name: docker.pkg.github.com login
         run: |
           echo ${{ secrets.GITHUB_TOKEN }} \
@@ -144,17 +146,18 @@ jobs:
             --zip-file=fileb://demo/${{ env.DEMO_ZIP_FILE_NAME }}
       - name: invoke the demo lambda
         run: |
-          aws lambda invoke \
-            --function-name=LambdaWasmtimeTestFunction \
-            --log-type=Tail \
-            --payload="{\"data\":\"$(base64 ./demo/luigi.png)\"}" \
-            /dev/stdout 1>/dev/null \
-          | \
-          jq '.Payload.data' \
+          time \
+            aws lambda invoke \
+              --function-name=LambdaWasmtimeTestFunction \
+              --log-type=Tail \
+              --payload="{\"data\":\"$(base64 ./demo/luigi.png)\"}" \
+              ./response.json
+          jq '.Payload.data' ./response.json \
           | \
           base64 \
             --decode \
-            > thumbnail.png
+          > \
+          ./thumbnail.png
       - name: delete the demo lambda
         run: |
           aws lambda delete-function \
@@ -162,5 +165,5 @@ jobs:
       - name: check image and thumbnail sizes
         run: |
           image_size="$(wc -c ./demo/luigi.png | grep -Eo '[0-9]+')"
-          thumbnail_size="$(wc -c thumbnail.png | grep -Eo '[0-9]+')"
+          thumbnail_size="$(wc -c ./thumbnail.png | grep -Eo '[0-9]+')"
           if [[ ! $thumbnail_size -lt $image_size ]]; then exit 1; fi
