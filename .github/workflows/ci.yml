@@ -14,7 +14,7 @@ env:
   DEMO_ZIP_FILE_NAME: demo.zip
   VERSION: 0.3.3
   VERSION_DOTLESS: ${VERSION//./}
-  DOCKER_BUILD_IMAGE_TAG: docker.pkg.github.com/chiefbiiko/lambda-wasmtime/runtime-builder:0.3.3-amazonlinux2
+  DOCKER_BUILD_IMAGE_TAG: docker.pkg.github.com/chiefbiiko/lambda-wasmtime/runtime-build-image:0.3.3-amazonlinux2
 
 jobs:
   build_image:
