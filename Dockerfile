@@ -1,5 +1,3 @@
-# usage: docker run -v "$PWD:/home" $IMAGE
-
 FROM amazonlinux:2.0.20191217.0
 
 LABEL url="https://github.com/chiefbiiko/lambda-wasmtime" \
@@ -33,5 +31,9 @@ RUN yum install -y clang clang-libs clang-devel cmake3 make ncurses-compat-libs 
 VOLUME /home
 
 WORKDIR /home
+
+COPY Cargo.toml Makefile.toml /home/
+
+COPY src /home/src/
 
 CMD ["cargo", "make", "runtime"]
