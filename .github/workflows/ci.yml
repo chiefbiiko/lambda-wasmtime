@@ -25,7 +25,7 @@ jobs:
       - name: build the build image
         run: |
           docker build \
-            --file=./build/Dockerfile \
+            --file=./Dockerfile \
             --tag=${{ env.DOCKER_BUILD_IMAGE_TAG }} .
       - name: docker.pkg.github.com login
         run: |
