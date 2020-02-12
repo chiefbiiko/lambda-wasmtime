@@ -29,7 +29,7 @@ RUN yum install -y clang clang-libs clang-devel cmake3 make ncurses-compat-libs 
   unzip $temp_file -d $temp_dir && \
   mv $temp_dir/cargo-make-v$CARGO_MAKE_VERSION-x86_64-unknown-linux-musl/cargo-make /root/.cargo/bin/cargo-make && \
   rm $temp_file && rm -rf $temp_dir && \
-  useradd --home=/home runtime-builder
+  adduser --home=/home runtime-builder
 
 USER runtime-builder
 
