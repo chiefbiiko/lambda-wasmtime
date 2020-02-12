@@ -1,6 +1,6 @@
 # lambda-wasmtime build spec 4 cargo-make
 # 4 mac and the ./Dockerfile image
-# 4 build run: cargo make runtime
+# 2 build run: cargo make runtime
 
 [env]
 RUNTIME_ZIP_FILE_NAME = { value = "runtime.zip", condition = { env_not_set = ["RUNTIME_ZIP_FILE_NAME"] } }

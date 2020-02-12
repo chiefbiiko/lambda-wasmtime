@@ -55,7 +55,7 @@ jobs:
         run: |
           docker run \
             --rm \
-            --volume=${{ env.PWD }}:/home \
+            --volume=$PWD:/home \
             --env=RUNTIME_ZIP_FILE_NAME=${{ env.RUNTIME_ZIP_FILE_NAME }} \
             ${{ env.DOCKER_BUILD_IMAGE_TAG }}
       - name: upload the runtime layer artifact
