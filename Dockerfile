@@ -17,7 +17,17 @@ ENV RUST_VERSION=1.41.0 \
   CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=clang++ \
   RUNTIME_ZIP_FILE_NAME=runtime.zip
 
-RUN yum install -y clang clang-libs clang-devel cmake3 make ncurses-compat-libs ncurses-devel openssl-devel unzip zip && \
+RUN yum install -y \
+  clang-7.0.1-1.amzn2.0.2.x86_64 \
+  clang-libs-7.0.1-1.amzn2.0.2.x86_64 \
+  clang-devel-7.0.1-1.amzn2.0.2.x86_64 \
+  cmake3-3.13.1-1.amzn2.x86_64 \
+  make-1:3.82-23.amzn2.x86_64 \
+  ncurses-compat-libs-6.0-8.20170212.amzn2.1.3.x86_64 \
+  ncurses-devel-6.0-8.20170212.amzn2.1.3.x86_64 \
+  openssl-devel-1:1.0.2k-19.amzn2.1.1.x86_64 \
+  unzip-6.0-20.amzn2.x86_64 \
+  zip-3.0-11.amzn2.0.2.x86_64 && \
   ln -s /usr/bin/cmake3 /usr/bin/cmake && \
   rm -rf /var/cache/yum && \
   curl -fsSL https://sh.rustup.rs | sh -s -- --default-toolchain $RUST_VERSION -y && \
