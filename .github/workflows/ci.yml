@@ -133,22 +133,28 @@ jobs:
           )
           echo ::set-output name=runtime_arn::$runtime_arn
       - name: deploy the demo lambda
+        id: deploy_lambda
         run: |
-          aws lambda create-function \
-            --function-name=LambdaWasmtimeTestFunction \
-            --runtime=provided \
-            --role=${{ secrets.LAMBDA_EXECUTION_ROLE_ARN }} \
-            --handler=demo.handler \
-            --description="lambda-wasmtime test function" \
-            --timeout=3 \
-            --memory-size=128 \
-            --layers=${{ steps.publish_layer.outputs.runtime_arn }} \
-            --zip-file=fileb://demo/${{ env.DEMO_ZIP_FILE_NAME }}
+          function_arn=$(
+            aws lambda create-function \
+              --function-name=LambdaWasmtimeTestFunction \
+              --runtime=provided \
+              --role=${{ secrets.LAMBDA_EXECUTION_ROLE_ARN }} \
+              --handler=demo.handler \
+              --description="lambda-wasmtime test function" \
+              --timeout=3 \
+              --memory-size=128 \
+              --layers=${{ steps.publish_layer.outputs.runtime_arn }} \
+              --zip-file=fileb://demo/${{ env.DEMO_ZIP_FILE_NAME }} \
+            | \
+            jq '.FunctionArn'
+          )
+          echo ::set-output name=function_arn::$function_arn
       - name: invoke the demo lambda
         run: |
           time \
             aws lambda invoke \
-              --function-name=LambdaWasmtimeTestFunction \
+              --function-name=${{ steps.deploy_lambda.outputs.function_arn }} \
               --log-type=Tail \
               --payload="{\"data\":\"$(base64 ./demo/luigi.png)\"}" \
               ./response.json
@@ -161,7 +167,7 @@ jobs:
       - name: delete the demo lambda
         run: |
           aws lambda delete-function \
-            --function-name=LambdaWasmtimeTestFunction
+            --function-name=${{ steps.deploy_lambda.outputs.function_arn }}
       - name: check image and thumbnail sizes
         run: |
           image_size="$(wc -c ./demo/luigi.png | grep -Eo '[0-9]+')"
