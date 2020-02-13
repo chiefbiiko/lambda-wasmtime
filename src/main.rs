@@ -372,6 +372,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .split(".")
         .map(str::to_string)
         .collect::<Vec<String>>();
+
+    let file = format!("{}.wasm", file_handler[0]);
+
+    let handler = &file_handler[1];
+
     let prep_env_vars = &[]; // TODO: pass env vars to module instance
 
     // obsolete
@@ -491,7 +496,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Make wasi available by default.
     // let preopen_dirs = compute_preopen_dirs(&args.flag_dir, &args.flag_mapdir);
     let preopen_dirs = compute_preopen_dirs(&["/tmp".to_string()], &[]);
-    let argv = compute_argv(&file_handler[0], &[]);
+    let argv = compute_argv(&file, &[]);
     // let environ = compute_environ(&args.flag_env);
     // TODO
     let environ = compute_environ(prep_env_vars);
@@ -535,7 +540,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //         .with_context(|| format!("failed to process preload at `{}`", path.display()))?;
     // }
 
-    let path = Path::new(&file_handler[0]);
+    let path = Path::new(&file);
 
     // Load the main wasm module.
     let (instance, _module, data) = instantiate_module(&store, &module_registry, path)?;
@@ -590,7 +595,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         match invoke_export(
             &instance,
             &ModuleData::new(&data)?,
-            &file_handler[1],
+            handler,
             vec![event.to_string(), context],
         ) {
             Ok(result) => client.post(&api_ok).body(result).send()?,
