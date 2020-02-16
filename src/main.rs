@@ -7,53 +7,63 @@
 //! IL. Can also execute the `start` function of the module by laying out the memories, globals
 //! and tables, then emitting the translated code with hardcoded addresses to memory.
 
-#![deny(
-    missing_docs,
-    trivial_numeric_casts,
-    unused_extern_crates,
-    unstable_features
-)]
-#![warn(unused_import_braces)]
-#![cfg_attr(feature = "clippy", plugin(clippy(conf_file = "../clippy.toml")))]
-#![cfg_attr(
-    feature = "cargo-clippy",
-    allow(clippy::new_without_default, clippy::new_without_default_derive)
-)]
-#![cfg_attr(
-    feature = "cargo-clippy",
-    warn(
-        clippy::float_arithmetic,
-        clippy::mut_mut,
-        clippy::nonminimal_bool,
-        clippy::option_map_unwrap_or,
-        clippy::option_map_unwrap_or_else,
-        clippy::unicode_not_nfc,
-        clippy::use_self
-    )
-)]
+// #![deny(
+//     missing_docs,
+//     trivial_numeric_casts,
+//     unused_extern_crates,
+//     unstable_features
+// )]
+// #![warn(unused_import_braces)]
+// #![cfg_attr(feature = "clippy", plugin(clippy(conf_file = "../clippy.toml")))]
+// #![cfg_attr(
+//     feature = "cargo-clippy",
+//     allow(clippy::new_without_default, clippy::new_without_default_derive)
+// )]
+// #![cfg_attr(
+//     feature = "cargo-clippy",
+//     warn(
+//         clippy::float_arithmetic,
+//         clippy::mut_mut,
+//         clippy::nonminimal_bool,
+//         clippy::option_map_unwrap_or,
+//         clippy::option_map_unwrap_or_else,
+//         clippy::unicode_not_nfc,
+//         clippy::use_self
+//     )
+// )]
 
 use anyhow::{anyhow, bail, Context as _, Result as AnyHowResult};
-use cranelift_codegen::{settings, settings::Configurable};
+use cranelift_codegen::settings::{builder, Builder as FlagBuilder, Configurable, Flags};
 // use docopt::Docopt;
-use reqwest::blocking::Client;
-use serde::Deserialize;
-use std::env::var;
-use std::path::{Component, Path};
-use std::{collections::HashMap, ffi::OsStr, fs::File, process::exit};
+use reqwest::{
+    blocking::{Client, Response},
+    header::HeaderMap,
+};
+// use serde::Deserialize;
+// use std::env::var;
+// use std::path::{Component, Path};
+use std::{
+    collections::HashMap,
+    env::var,
+    ffi::OsStr,
+    fs::File,
+    path::{Component, Path},
+};
 // use surf;
 use wasi_common::preopen_dir;
-use wasmtime::{Config, Engine, HostRef, Instance, Module, Store};
+use wasmtime::{Config, Engine, Extern, HostRef, Instance, Module, Store};
+// use wasmtime_runtime::InstanceHandle;
 // use wasmtime_cli::pick_compilation_strategy;
 // use wasmtime_environ::{cache_create_new_config, cache_init};
-use wasmtime_interface_types::ModuleData;
+use wasmtime_interface_types::{ModuleData, Value};
 use wasmtime_jit::{CompilationStrategy, Features};
-use wasmtime_wasi::create_wasi_instance;
+// use wasmtime_wasi::create_wasi_instance;
 // use wasmtime_wasi::old::snapshot_0::create_wasi_instance as create_wasi_instance_snapshot_0;
 // #[cfg(feature = "wasi-c")]
-use wasm_webidl_bindings::ast;
-use wasmtime_interface_types::Value;
+// use wasm_webidl_bindings::ast;
+// use wasmtime_interface_types::Value;
 use wasmtime_wasi_c::instantiate_wasi_c;
-use wasmtime_wast::instantiate_spectest;
+// use wasmtime_wast::instantiate_spectest;
 
 // const USAGE: &str = "
 // Wasm runner.
@@ -95,26 +105,26 @@ use wasmtime_wast::instantiate_spectest;
 //     --version           print the Cranelift version
 // ";
 
-#[derive(Deserialize, Debug, Clone)]
-struct Args {
-    arg_file: String,
-    arg_arg: Vec<String>,
-    flag_optimize: bool,
-    flag_disable_cache: bool,
-    flag_cache_config: Option<String>,
-    flag_create_cache_config: bool,
-    flag_debug: bool,
-    flag_g: bool,
-    flag_enable_simd: bool,
-    flag_lightbeam: bool,
-    flag_cranelift: bool,
-    flag_invoke: Option<String>,
-    flag_preload: Vec<String>,
-    flag_env: Vec<String>,
-    flag_dir: Vec<String>,
-    flag_mapdir: Vec<String>,
-    flag_wasi_c: bool,
-}
+// #[derive(Deserialize, Debug, Clone)]
+// struct Args {
+//     arg_file: String,
+//     arg_arg: Vec<String>,
+//     flag_optimize: bool,
+//     flag_disable_cache: bool,
+//     flag_cache_config: Option<String>,
+//     flag_create_cache_config: bool,
+//     flag_debug: bool,
+//     flag_g: bool,
+//     flag_enable_simd: bool,
+//     flag_lightbeam: bool,
+//     flag_cranelift: bool,
+//     flag_invoke: Option<String>,
+//     flag_preload: Vec<String>,
+//     flag_env: Vec<String>,
+//     flag_dir: Vec<String>,
+//     flag_mapdir: Vec<String>,
+//     flag_wasi_c: bool,
+// }
 
 // fn pick_compilation_strategy(cranelift: bool, lightbeam: bool) -> CompilationStrategy {
 //   // Decide how to compile.
@@ -155,79 +165,79 @@ struct Args {
 //       .unwrap();
 // }
 
-fn compute_preopen_dirs(flag_dir: &[String], flag_mapdir: &[String]) -> Vec<(String, File)> {
-    let mut preopen_dirs = Vec::new();
+// fn compute_preopen_dirs(flag_dir: &[String], flag_mapdir: &[String]) -> Vec<(String, File)> {
+//     let mut preopen_dirs = Vec::new();
+//
+//     for dir in flag_dir {
+//         let preopen_dir = preopen_dir(dir).unwrap_or_else(|err| {
+//             println!("error while pre-opening directory {}: {}", dir, err);
+//             exit(1);
+//         });
+//         preopen_dirs.push((dir.clone(), preopen_dir));
+//     }
+//
+//     for mapdir in flag_mapdir {
+//         let parts: Vec<&str> = mapdir.split("::").collect();
+//         if parts.len() != 2 {
+//             println!(
+//                 "--mapdir argument must contain exactly one double colon ('::'), separating a \
+//                  guest directory name and a host directory name"
+//             );
+//             exit(1);
+//         }
+//         let (key, value) = (parts[0], parts[1]);
+//         let preopen_dir = preopen_dir(value).unwrap_or_else(|err| {
+//             println!("error while pre-opening directory {}: {}", value, err);
+//             exit(1);
+//         });
+//         preopen_dirs.push((key.to_string(), preopen_dir));
+//     }
+//
+//     preopen_dirs
+// }
 
-    for dir in flag_dir {
-        let preopen_dir = preopen_dir(dir).unwrap_or_else(|err| {
-            println!("error while pre-opening directory {}: {}", dir, err);
-            exit(1);
-        });
-        preopen_dirs.push((dir.clone(), preopen_dir));
-    }
-
-    for mapdir in flag_mapdir {
-        let parts: Vec<&str> = mapdir.split("::").collect();
-        if parts.len() != 2 {
-            println!(
-                "--mapdir argument must contain exactly one double colon ('::'), separating a \
-                 guest directory name and a host directory name"
-            );
-            exit(1);
-        }
-        let (key, value) = (parts[0], parts[1]);
-        let preopen_dir = preopen_dir(value).unwrap_or_else(|err| {
-            println!("error while pre-opening directory {}: {}", value, err);
-            exit(1);
-        });
-        preopen_dirs.push((key.to_string(), preopen_dir));
-    }
-
-    preopen_dirs
-}
-
-/// Compute the argv array values.
-fn compute_argv(argv0: &str, arg_arg: &[String]) -> Vec<String> {
-    let mut result = Vec::new();
-
-    // Add argv[0], which is the program name. Only include the base name of the
-    // main wasm module, to avoid leaking path information.
-    result.push(
-        Path::new(argv0)
-            .components()
-            .next_back()
-            .map(Component::as_os_str)
-            .and_then(OsStr::to_str)
-            .unwrap_or("")
-            .to_owned(),
-    );
-
-    // Add the remaining arguments.
-    for arg in arg_arg {
-        result.push(arg.to_owned());
-    }
-
-    result
-}
+// /// Compute the argv array values.
+// fn compute_argv(argv0: &str, arg_arg: &[String]) -> Vec<String> {
+//     let mut result = Vec::new();
+//
+//     // Add argv[0], which is the program name. Only include the base name of the
+//     // main wasm module, to avoid leaking path information.
+//     result.push(
+//         Path::new(argv0)
+//             .components()
+//             .next_back()
+//             .map(Component::as_os_str)
+//             .and_then(OsStr::to_str)
+//             .unwrap_or("")
+//             .to_owned(),
+//     );
+//
+//     // Add the remaining arguments.
+//     for arg in arg_arg {
+//         result.push(arg.to_owned());
+//     }
+//
+//     result
+// }
 
 /// Compute the environ array values.
-fn compute_environ(flag_env: &[String]) -> Vec<(String, String)> {
-    let mut result = Vec::new();
-
-    // Add the environment variables, which must be of the form "key=value".
-    for env in flag_env {
-        let split = env.splitn(2, '=').collect::<Vec<_>>();
-        if split.len() != 2 {
-            println!(
-                "environment variables must be of the form \"key=value\"; got \"{}\"",
-                env
-            );
-        }
-        result.push((split[0].to_owned(), split[1].to_owned()));
-    }
-
-    result
-}
+// fn compute_environ(flag_env: &[String]) -> Vec<(String, String)> {
+//     let mut result = Vec::new();
+//
+//     // Add the environment variables, which must be of the form "key=value".
+//     for env in flag_env {
+//         let split = env.splitn(2, '=').collect::<Vec<_>>();
+//         if split.len() != 2 {
+//             println!(
+//                 "environment variables must be of the form \"key=value\"; got \"{}\"",
+//                 env
+//             );
+//         }
+//         result.push((split[0].to_owned(), split[1].to_owned()));
+//     }
+//
+//     result
+// }
 
 fn instantiate_module(
     store: &HostRef<Store>,
@@ -235,12 +245,12 @@ fn instantiate_module(
     path: &Path,
 ) -> AnyHowResult<(HostRef<Instance>, HostRef<Module>, Vec<u8>)> {
     // Read the wasm module binary either as `*.wat` or a raw binary
-    let data = wat::parse_file(path.to_path_buf())?;
+    let data: Vec<u8> = wat::parse_file(path.to_path_buf())?;
 
-    let module = HostRef::new(Module::new(store, &data)?);
+    let module: HostRef<Module> = HostRef::new(Module::new(store, &data)?);
 
     // Resolve import using module_registry.
-    let imports = module
+    let imports: Vec<Extern> = module
         .borrow()
         .imports()
         .iter()
@@ -263,7 +273,7 @@ fn instantiate_module(
         })
         .collect::<AnyHowResult<Vec<_>, _>>()?;
 
-    let instance = HostRef::new(Instance::new(store, &module, &imports)?);
+    let instance: HostRef<Instance> = HostRef::new(Instance::new(store, &module, &imports)?);
 
     Ok((instance, module, data))
 }
@@ -291,50 +301,52 @@ fn invoke_export(
     name: &str,
     args: Vec<String>,
 ) -> AnyHowResult<String> {
-    let mut handle = instance.borrow().handle().clone();
+    // let mut handle = instance.borrow().handle().clone();
+    //
+    // // Use the binding information in `ModuleData` to figure out what arguments
+    // // need to be passed to the function that we're invoking. Currently we take
+    // // the CLI parameters and attempt to parse them into function arguments for
+    // // the function we'll invoke.
+    // let binding = data.binding_for_export(&mut handle, name)?;
+    // if binding.param_types()?.len() > 0 {
+    //     eprintln!(
+    //         "warning: using `--invoke` with a function that takes arguments \
+    //          is experimental and may break in the future"
+    //     );
+    // }
+    // let mut values = Vec::new();
+    // let mut args = args.iter();
+    // for ty in binding.param_types()? {
+    //     let val = match args.next() {
+    //         Some(s) => s,
+    //         None => bail!("not enough arguments for `{}`", name),
+    //     };
+    //     values.push(match ty {
+    //         // TODO: integer parsing here should handle hexadecimal notation
+    //         // like `0x0...`, but the Rust standard library currently only
+    //         // parses base-10 representations.
+    //         ast::WebidlScalarType::Long => Value::I32(val.parse()?),
+    //         ast::WebidlScalarType::LongLong => Value::I64(val.parse()?),
+    //         ast::WebidlScalarType::UnsignedLong => Value::U32(val.parse()?),
+    //         ast::WebidlScalarType::UnsignedLongLong => Value::U64(val.parse()?),
+    //
+    //         ast::WebidlScalarType::Float | ast::WebidlScalarType::UnrestrictedFloat => {
+    //             Value::F32(val.parse()?)
+    //         }
+    //         ast::WebidlScalarType::Double | ast::WebidlScalarType::UnrestrictedDouble => {
+    //             Value::F64(val.parse()?)
+    //         }
+    //         ast::WebidlScalarType::DomString => Value::String(val.to_string()),
+    //         t => bail!("unsupported argument type {:?}", t),
+    //     });
+    // }
 
-    // Use the binding information in `ModuleData` to figure out what arguments
-    // need to be passed to the function that we're invoking. Currently we take
-    // the CLI parameters and attempt to parse them into function arguments for
-    // the function we'll invoke.
-    let binding = data.binding_for_export(&mut handle, name)?;
-    if binding.param_types()?.len() > 0 {
-        eprintln!(
-            "warning: using `--invoke` with a function that takes arguments \
-             is experimental and may break in the future"
-        );
-    }
-    let mut values = Vec::new();
-    let mut args = args.iter();
-    for ty in binding.param_types()? {
-        let val = match args.next() {
-            Some(s) => s,
-            None => bail!("not enough arguments for `{}`", name),
-        };
-        values.push(match ty {
-            // TODO: integer parsing here should handle hexadecimal notation
-            // like `0x0...`, but the Rust standard library currently only
-            // parses base-10 representations.
-            ast::WebidlScalarType::Long => Value::I32(val.parse()?),
-            ast::WebidlScalarType::LongLong => Value::I64(val.parse()?),
-            ast::WebidlScalarType::UnsignedLong => Value::U32(val.parse()?),
-            ast::WebidlScalarType::UnsignedLongLong => Value::U64(val.parse()?),
-
-            ast::WebidlScalarType::Float | ast::WebidlScalarType::UnrestrictedFloat => {
-                Value::F32(val.parse()?)
-            }
-            ast::WebidlScalarType::Double | ast::WebidlScalarType::UnrestrictedDouble => {
-                Value::F64(val.parse()?)
-            }
-            ast::WebidlScalarType::DomString => Value::String(val.to_string()),
-            t => bail!("unsupported argument type {:?}", t),
-        });
-    }
+    let values: Vec<Value> = args.iter().map(|v| Value::String(v.to_owned())).collect();
 
     // Invoke the function and then afterwards print all the results that came
     // out, if there are any.
-    let results = data
-        .invoke_export(&instance, name, &values)
+    let results: Vec<Value> = data
+        .invoke_export(instance, name, &values)
         .with_context(|| format!("failed to invoke `{}`", name))?;
     // if results.len() > 0 {
     //     eprintln!(
@@ -342,12 +354,18 @@ fn invoke_export(
     //          is experimental and may break in the future"
     //     );
     // }
-    let mut return_value = "".to_string();
+    // let mut return_value: String = "".to_string();
 
-    for result in results {
-        // println!("{}", result);
-        return_value = format!("{}{}", return_value, result);
-    }
+    let return_value: String = results
+        .iter()
+        .map(|v| v.to_string())
+        .collect::<Vec<String>>()
+        .join("");
+
+    // for result in results {
+    //     // println!("{}", result);
+    //     return_value = format!("{}{}", return_value, result);
+    // }
     //
     // Ok(())
 
@@ -356,28 +374,43 @@ fn invoke_export(
     Ok(return_value)
 }
 
+/*
+CARGO_PKG_AUTHORS
+CARGO_PKG_DESCRIPTION
+CARGO_PKG_HOMEPAGE
+CARGO_PKG_NAME
+CARGO_PKG_REPOSITORY
+CARGO_PKG_VERSION
+*/
+
+const PKG_NAME: Option<&'static str> = option_env!("CARGO_PKG_NAME");
+const PKG_VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
+const PKG_DESCRIPTION: Option<&'static str> = option_env!("CARGO_PKG_DESCRIPTION");
+const PKG_REPO: Option<&'static str> = option_env!("CARGO_PKG_REPOSITORY");
+const PKG_AUTHOR: Option<&'static str> = option_env!("CARGO_PKG_AUTHORS");
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // let version = env!("CARGO_PKG_VERSION");
-    // let warning = "warning .* is experimental and may break in the future";
-    let api = format!(
-        "http://{}/2018-06-01/runtime",
-        var("AWS_LAMBDA_RUNTIME_API")?
-    );
-    let api_next = format!("{}/invocation/next", api);
-    let api_err = format!("{}/invocation/error", api);
-    let api_ok = format!("{}/invocation/response", api);
+    println!("{:?} {:?}", PKG_NAME, PKG_VERSION);
+    println!("{:?}", PKG_DESCRIPTION);
+    println!("{:?}", PKG_REPO);
+    println!("{:?}", PKG_AUTHOR);
 
-    // let file_handler = var("_HANDLER")?.split(".").collect::<Vec<&str>>();
-    let file_handler = var("_HANDLER")?
-        .split(".")
-        .map(str::to_string)
-        .collect::<Vec<String>>();
+    let enable_wasi: bool = match var("ENABLE_WASI") {
+        Ok(_val) => true,
+        _ => false,
+    };
 
-    let file = format!("{}.wasm", file_handler[0]);
+    let runtime_api_host: String = var("AWS_LAMBDA_RUNTIME_API")?;
+    let api: String = format!("http://{}/2018-06-01/runtime", runtime_api_host);
+    let api_next: String = format!("{}/invocation/next", api);
+    let api_err: String = format!("{}/invocation/error", api);
+    let api_ok: String = format!("{}/invocation/response", api);
 
-    let handler = &file_handler[1];
+    let _file_handler: Vec<String> = var("_HANDLER")?.split('.').map(str::to_string).collect();
+    let file: String = format!("{}.wasm", _file_handler[0]);
+    let handler: String = _file_handler[1].to_owned();
 
-    let prep_env_vars = &[]; // TODO: pass env vars to module instance
+    // let prep_env_vars = &[]; // TODO: pass env vars to module instance
 
     // obsolete
     // let args: Args = Docopt::new(USAGE)
@@ -435,20 +468,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     exit(1);
     // }
 
-    let mut flag_builder = settings::builder();
+    let mut flag_builder: FlagBuilder = builder();
     let mut features: Features = Default::default();
 
     // There are two possible traps for division, and this way
     // we get the proper one if code traps.
+    // Forced
     flag_builder.enable("avoid_div_traps")?;
 
     // Enable/disable producing of debug info.
-    let debug_info = false; //args.flag_g;
+    // let debug_info = false; //args.flag_g;
 
-    // Enable verifier passes in debug mode.
-    if cfg!(debug_assertions) {
-        flag_builder.enable("enable_verifier")?;
-    }
+    // // Enable verifier passes in debug mode.
+    // if cfg!(debug_assertions) {
+    //     flag_builder.enable("enable_verifier")?;
+    // }
 
     // // Enable SIMD if requested
     // if args.flag_enable_simd {
@@ -456,16 +490,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     features.simd = true;
     // }
 
-    // Enable SIMD
+    // SIMD enabled by default
     flag_builder.enable("enable_simd")?;
     features.simd = true;
 
-    // Enable optimization if requested.
     // if args.flag_optimize {
     //     flag_builder.set("opt_level", "speed")?;
     // }
 
-    // TODO: force off optimizations with wasmtime@v0.9.0
+    // Enable optimization by default
     flag_builder.set("opt_level", "speed")?;
 
     // // Decide how to compile.
@@ -474,32 +507,51 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // force cranelift
     // let strategy = pick_compilation_strategy(true, false);
 
-    let mut config = Config::new();
+    let mut config: Config = Config::new();
+
     config
         .features(features)
-        .flags(settings::Flags::new(flag_builder))
-        .debug_info(debug_info)
+        .flags(Flags::new(flag_builder))
+        .debug_info(false)
         // .strategy(strategy);
+        // TODO: test using lightbeam!!!
         .strategy(CompilationStrategy::Cranelift);
-    let engine = HostRef::new(Engine::new(&config));
-    let store = HostRef::new(Store::new(&engine));
 
-    let mut module_registry = HashMap::new();
+    let engine: HostRef<Engine> = HostRef::new(Engine::new(&config));
+    let store: HostRef<Store> = HostRef::new(Store::new(&engine));
+
+    let mut module_registry: HashMap<String, HostRef<Instance>> = HashMap::new();
 
     // TODO: think about tossing this...
-    // Make spectest available by default.
-    module_registry.insert(
-        "spectest".to_owned(),
-        HostRef::new(Instance::from_handle(&store, instantiate_spectest()?)),
-    );
+    // // Make spectest available by default.
+    // module_registry.insert(
+    //     "spectest".to_owned(),
+    //     HostRef::new(Instance::from_handle(&store, instantiate_spectest()?)),
+    // );
 
     // Make wasi available by default.
     // let preopen_dirs = compute_preopen_dirs(&args.flag_dir, &args.flag_mapdir);
-    let preopen_dirs = compute_preopen_dirs(&["/tmp".to_string()], &[]);
-    let argv = compute_argv(&file, &[]);
+    // let preopen_dirs = compute_preopen_dirs(&["/tmp".to_string()], &[]);
+    let preopen_dirs: Vec<(String, File)> = vec![("/tmp".to_string(), preopen_dir("/tmp")?)];
+
+    // .unwrap_or_else(|err| {
+    //     println!("error while pre-opening directory {}: {}", dir, err);
+    //     exit(1);
+    // });
+    // preopen_dirs.push((dir.clone(), preopened_dir));
+    // let argv = compute_argv(&file, &[]);
+    let argv: Vec<String> = vec![Path::new(&file)
+        .components()
+        .next_back()
+        .map(Component::as_os_str)
+        .and_then(OsStr::to_str)
+        .unwrap_or("")
+        .to_owned()];
     // let environ = compute_environ(&args.flag_env);
-    // TODO
-    let environ = compute_environ(prep_env_vars);
+    // TODO: check what exact env vars should be passed according to aws
+    // let environ = compute_environ(prep_env_vars);
+    let environ: Vec<(String, String)> =
+        vec![("RUNTIME_VERSION".to_string(), format!("{:?}", PKG_VERSION))];
 
     // let wasi_unstable = HostRef::new(if args.flag_wasi_c {
     //     #[cfg(feature = "wasi-c")]
@@ -516,21 +568,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     create_wasi_instance_snapshot_0(&store, &preopen_dirs, &argv, &environ)?
     // });
 
-    let wasi_unstable = HostRef::new({
-        let global_exports = store.borrow().global_exports().clone();
-        let handle = instantiate_wasi_c("", global_exports, &preopen_dirs, &argv, &environ)?;
-        Instance::from_handle(&store, handle)
-    });
+    if enable_wasi {
+        let wasi_unstable: HostRef<Instance> = HostRef::new({
+            let global_exports = store.borrow().global_exports().clone();
+            let handle = instantiate_wasi_c("", global_exports, &preopen_dirs, &argv, &environ)?;
+            Instance::from_handle(&store, handle)
+        });
 
-    let wasi_snapshot_preview1 = HostRef::new(create_wasi_instance(
-        &store,
-        &preopen_dirs,
-        &argv,
-        &environ,
-    )?);
+        module_registry.insert("wasi_unstable".to_owned(), wasi_unstable);
+    }
 
-    module_registry.insert("wasi_unstable".to_owned(), wasi_unstable);
-    module_registry.insert("wasi_snapshot_preview1".to_owned(), wasi_snapshot_preview1);
+    // let wasi_snapshot_preview1 = HostRef::new(create_wasi_instance(
+    //     &store,
+    //     &preopen_dirs,
+    //     &argv,
+    //     &environ,
+    // )?);
+
+    // module_registry.insert("wasi_snapshot_preview1".to_owned(), wasi_snapshot_preview1);
 
     // reenable this sometime
     // // Load the preload wasm modules.
@@ -540,12 +595,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //         .with_context(|| format!("failed to process preload at `{}`", path.display()))?;
     // }
 
-    let path = Path::new(&file);
+    // let path: &Path = Path::new(&file);
 
     // Load the main wasm module.
-    let (instance, _module, data) = instantiate_module(&store, &module_registry, path)?;
+    let (instance, _module, data): (HostRef<Instance>, HostRef<Module>, Vec<u8>) =
+        instantiate_module(&store, &module_registry, Path::new(&file))?;
 
-    let client = Client::new();
+    let client: Client = Client::new();
 
     // loop forever n poll runtime api
     loop {
@@ -553,25 +609,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // let response = client.get(api_next).send().await?;
         // let mut res = surf::get(api_next).await?;
         // let event = res.body_string().await?;
-        let response = client.get(&api_next).send()?;
-        let headers = response.headers();
+        let response: Response = client.get(&api_next).send()?;
+        let headers: &HeaderMap = response.headers();
 
-        let function_arn = headers
+        // let function_arn: &str = headers
+        //     .get("Lambda-Runtime-Invoked-Function-Arn")
+        //     .ok_or(anyhow!("missing header Lambda-Runtime-Invoked-Function-Arn"))?;
+        let function_arn: &str = headers
             .get("Lambda-Runtime-Invoked-Function-Arn")
             .ok_or(anyhow!(
                 "missing header Lambda-Runtime-Invoked-Function-Arn"
-            ))?;
-        let deadline_ms = headers
-            .get("Lambda-Runtime-Deadline-Ms")
-            .ok_or(anyhow!("missing header Lambda-Runtime-Deadline-Ms"))?;
-        let request_id = headers
-            .get("Lambda-Runtime-Request-Id")
-            .ok_or(anyhow!("missing header Lambda-Runtime-Request-Id"))?;
-        let trace_id = headers
-            .get("Lambda-Runtime-Trace-Id")
-            .ok_or(anyhow!("missing header Lambda-Runtime-Trace-Id"))?;
+            ))?
+            .to_str()?;
 
-        let context = format!(
+        let deadline_ms: &str = headers
+            .get("Lambda-Runtime-Deadline-Ms")
+            .ok_or(anyhow!("missing header Lambda-Runtime-Deadline-Ms"))?
+            .to_str()?;
+
+        let request_id: &str = headers
+            .get("Lambda-Runtime-Request-Id")
+            .ok_or(anyhow!("missing header Lambda-Runtime-Request-Id"))?
+            .to_str()?;
+
+        let trace_id: &str = headers
+            .get("Lambda-Runtime-Trace-Id")
+            .ok_or(anyhow!("missing header Lambda-Runtime-Trace-Id"))?
+            .to_str()?;
+
+        let context: String = format!(
             "{{\"function_arn\":\"{:?}\",\"deadline_ms\":\"{:?}\",\"request_id\":\"{:?}\",\"trace_id\":\"{:?}\"}}",
             function_arn,
             deadline_ms,
@@ -579,7 +645,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         trace_id
          );
 
-        let event = response.text()?;
+        let event: String = response.text()?;
+
+        let args: Vec<String> = vec![event, context];
 
         // let mut event = String::new();
         // response.read_to_string(&mut event)?;
@@ -592,12 +660,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // let context = format!("{{\"function_arn\":\"{}\",\"deadline_ms\":\"{}\",\"request_id\":\"{}\",\"trace_id\":\"{}\"}}", function_arn, deadline_ms, request_id, trace_id);
 
         // invoke wasm n report result
-        match invoke_export(
-            &instance,
-            &ModuleData::new(&data)?,
-            handler,
-            vec![event.to_string(), context],
-        ) {
+        match invoke_export(&instance, &ModuleData::new(&data)?, &handler, args) {
             Ok(result) => client.post(&api_ok).body(result).send()?,
             // Ok(result) => surf::post(api_ok).body_string(result).await?,
             _ => client
