@@ -6,48 +6,13 @@ edition = "2018"
 repository = "https://github.com/chiefbiiko/lambda-wasmtime"
 
 [dependencies]
-# FIXME: disable all-arch - Enable all supported architectures by default.
-# cranelift-codegen = { version = "0.50.0", features = ["enable-serde", "all-arch"] }
 cranelift-codegen = "0.50.0"
-# cranelift-entity = { version = "0.50.0", features = ["enable-serde"] }
-# cranelift-wasm = { version = "0.50.0", features = ["enable-serde"] }
-# cranelift-native = "0.50.0"
 wasmtime = "0.8.0"
-# wasmtime-debug = "0.8.0"
-# wasmtime-environ = "0.8.0"
 wasmtime-interface-types = "0.8.0"
 wasmtime-jit = "0.8.0"
-# wasmtime-obj = "0.8.0"
-# wasmtime-wast = "0.8.0"
-# wasmtime-wasi = "0.8.0"
-# wasmtime-wasi-c = { version = "0.8.0", optional = true }
+wasmtime-runtime = "0.8.0"
 wasmtime-wasi-c = "0.8.0"
-# wasm-webidl-bindings = "0.6"
 wasi-common = "0.8.0"
 wat = "1.0.2"
-# docopt = "1.0.1"
-# serde = { version = "1.0.94", features = ["derive"] }
-# faerie = "0.13.0"
 anyhow = "1.0.19"
-# target-lexicon = { version = "0.9.0", default-features = false }
-# pretty_env_logger = "0.3.0"
-# file-per-thread-logger = "0.1.1"
-# libc = "0.2.60"
-# rayon = "1.1"
-# more-asserts = "0.2.1"
-# surf = "1.0.3"
 reqwest = { version = "0.10.1", features = ["blocking"], default-features = false }
-
-# [build]
-# target = "x86_64-unknown-linux-gnu"
-# target="x86_64-unknown-linux-musl"
-
-# [build-dependencies]
-# anyhow = "1.0.19"
-# cargo-make = "0.26.2"
-
-# [lib]
-# crate-type = ["staticlib"]
-
-# [features]
-# wasi-c = ["wasmtime-wasi-c"]
