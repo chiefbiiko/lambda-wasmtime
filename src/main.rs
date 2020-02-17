@@ -532,26 +532,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Make wasi available by default.
     // let preopen_dirs = compute_preopen_dirs(&args.flag_dir, &args.flag_mapdir);
     // let preopen_dirs = compute_preopen_dirs(&["/tmp".to_string()], &[]);
-    let preopen_dirs: Vec<(String, File)> = vec![("/tmp".to_string(), preopen_dir("/tmp")?)];
-
-    // .unwrap_or_else(|err| {
-    //     println!("error while pre-opening directory {}: {}", dir, err);
-    //     exit(1);
-    // });
-    // preopen_dirs.push((dir.clone(), preopened_dir));
-    // let argv = compute_argv(&file, &[]);
-    let argv: Vec<String> = vec![Path::new(&file)
-        .components()
-        .next_back()
-        .map(Component::as_os_str)
-        .and_then(OsStr::to_str)
-        .unwrap_or("")
-        .to_owned()];
-    // let environ = compute_environ(&args.flag_env);
-    // TODO: check what exact env vars should be passed according to aws
-    // let environ = compute_environ(prep_env_vars);
-    let environ: Vec<(String, String)> =
-        vec![("RUNTIME_VERSION".to_string(), format!("{:?}", PKG_VERSION))];
+    // let preopen_dirs: Vec<(String, File)> = vec![("/tmp".to_string(), preopen_dir("/tmp")?)];
+    // 
+    // // .unwrap_or_else(|err| {
+    // //     println!("error while pre-opening directory {}: {}", dir, err);
+    // //     exit(1);
+    // // });
+    // // preopen_dirs.push((dir.clone(), preopened_dir));
+    // // let argv = compute_argv(&file, &[]);
+    // let argv: Vec<String> = vec![Path::new(&file)
+    //     .components()
+    //     .next_back()
+    //     .map(Component::as_os_str)
+    //     .and_then(OsStr::to_str)
+    //     .unwrap_or("")
+    //     .to_owned()];
+    // // let environ = compute_environ(&args.flag_env);
+    // // TODO: check what exact env vars should be passed according to aws
+    // // let environ = compute_environ(prep_env_vars);
+    // let environ: Vec<(String, String)> =
+    //     vec![("RUNTIME_VERSION".to_string(), format!("{:?}", PKG_VERSION))];
 
     // let wasi_unstable = HostRef::new(if args.flag_wasi_c {
     //     #[cfg(feature = "wasi-c")]
@@ -569,6 +569,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // });
 
     if enable_wasi {
+        let preopen_dirs: Vec<(String, File)> = vec![("/tmp".to_string(), preopen_dir("/tmp")?)];
+
+        // .unwrap_or_else(|err| {
+        //     println!("error while pre-opening directory {}: {}", dir, err);
+        //     exit(1);
+        // });
+        // preopen_dirs.push((dir.clone(), preopened_dir));
+        // let argv = compute_argv(&file, &[]);
+        let argv: Vec<String> = vec![Path::new(&file)
+            .components()
+            .next_back()
+            .map(Component::as_os_str)
+            .and_then(OsStr::to_str)
+            .unwrap_or("")
+            .to_owned()];
+        // let environ = compute_environ(&args.flag_env);
+        // TODO: check what exact env vars should be passed according to aws
+        // let environ = compute_environ(prep_env_vars);
+        let environ: Vec<(String, String)> =
+            vec![("RUNTIME_VERSION".to_string(), PKG_VERSION.to_string())];
+
         let wasi_unstable: HostRef<Instance> = HostRef::new({
             let global_exports = store.borrow().global_exports().clone();
             let handle = instantiate_wasi_c("", global_exports, &preopen_dirs, &argv, &environ)?;
