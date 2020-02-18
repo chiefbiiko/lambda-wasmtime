@@ -1,18 +1,13 @@
-# lambda-wasmtime demo build spec 4 cargo-make
-# 4 macos and ubuntu
-# 4 build run: cargo make demo
-
 [env]
 DEMO_ZIP_FILE_NAME = { value = "demo.zip", condition = { env_not_set = ["DEMO_ZIP_FILE_NAME"] } }
-
-# everyday cargo-make tasks
 
 [tasks.build]
 command = "cargo"
 args = ["wasi", "build", "--release"]
-dependencies = ["format", "clean"]
 
 [tasks.bundle]
 command = "zip"
 args = ["-j", "./${DEMO_ZIP_FILE_NAME}", "./target/wasm32-wasi/release/demo.wasm"]
-dependencies = ["build"]
+
+[tasks.demo]
+dependencies = ["format", "clean", "build", "bundle"]

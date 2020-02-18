@@ -91,7 +91,7 @@ jobs:
               cargo make \
                 --cwd=demo \
                 --env=DEMO_ZIP_FILE_NAME=${{ env.DEMO_ZIP_FILE_NAME }} \
-                bundle
+                demo
       - name: upload the demo bundle artifact
         uses: actions/upload-artifact@v1
         with:
