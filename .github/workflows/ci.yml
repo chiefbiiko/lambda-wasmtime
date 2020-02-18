@@ -133,12 +133,14 @@ jobs:
             jq '.LayerVersionArn'
           )
           echo ::set-output name=runtime_arn::$runtime_arn
-      - name: check if the test function exists
-        run: |
+      - name: delete any existing test function
+        if: |
           aws lambda get-function \
             --function-name=${{ env.LAMBDA_FUNCTION_NAME }}
+        run: |
+          aws lambda delete-function \
+            --function-name=${{ env.LAMBDA_FUNCTION_NAME }}
       - name: deploy the demo lambda
-        if: failure() # aka if previous step failed - test func does not exist
         run: |
           aws lambda create-function \
             --function-name=${{ env.LAMBDA_FUNCTION_NAME }} \
@@ -154,7 +156,7 @@ jobs:
           jq '.FunctionArn'
       - name: invoke the demo lambda
         run: |
-          base64_image="$(base64 ./demo/luigi.png)"
+          base64_image=$(base64 ./demo/luigi.png)
           time \
             aws lambda invoke \
               --function-name=${{ env.LAMBDA_FUNCTION_NAME }} \
