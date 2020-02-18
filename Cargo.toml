@@ -1,6 +1,6 @@
 [package]
 name = "lambda-wasmtime"
-version = "0.3.3"
+version = "0.4.0"
 authors = ["Noah Anabiik Schwarz <noah.anabiik.schwarz@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/chiefbiiko/lambda-wasmtime"
