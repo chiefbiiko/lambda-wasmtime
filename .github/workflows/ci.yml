@@ -11,6 +11,7 @@ on:
 
 env:
   AWS_REGION: us-east-1
+  LAMBDA_FUNCTION_NAME: LambdaWasmtimeTestFunction
   RUNTIME_ZIP_FILE_NAME: runtime.zip
   DEMO_ZIP_FILE_NAME: demo.zip
   VERSION: 0.3.3
@@ -132,10 +133,15 @@ jobs:
             jq '.LayerVersionArn'
           )
           echo ::set-output name=runtime_arn::$runtime_arn
+      - name: check if the test function exists
+        run: |
+          aws lambda get-function \
+            --function-name=${{ env.LAMBDA_FUNCTION_NAME }}
       - name: deploy the demo lambda
+        if: failure() # aka if previous step failed - test func does not exist
         run: |
           aws lambda create-function \
-            --function-name=LambdaWasmtimeTestFunction \
+            --function-name=${{ env.LAMBDA_FUNCTION_NAME }} \
             --runtime=provided \
             --role=${{ secrets.LAMBDA_EXECUTION_ROLE_ARN }} \
             --handler=demo.handler \
@@ -151,7 +157,7 @@ jobs:
           base64_image="$(base64 ./demo/luigi.png)"
           time \
             aws lambda invoke \
-              --function-name=LambdaWasmtimeTestFunction \
+              --function-name=${{ env.LAMBDA_FUNCTION_NAME }} \
               --log-type=Tail \
               --payload="{\"data\":\"$base64_image\"}" \
               ./response.json
@@ -164,7 +170,7 @@ jobs:
       - name: delete the demo lambda
         run: |
           aws lambda delete-function \
-            --function-name=LambdaWasmtimeTestFunction
+            --function-name=${{ env.LAMBDA_FUNCTION_NAME }}
       - name: check image and thumbnail sizes
         run: |
           image_size="$(wc -c ./demo/luigi.png | grep -Eo '[0-9]+')"
