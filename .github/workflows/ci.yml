@@ -134,10 +134,12 @@ jobs:
           )
           echo ::set-output name=runtime_arn::$runtime_arn
       - name: delete any existing test function
-        if: aws lambda get-function --function-name=env.LAMBDA_FUNCTION_NAME
         run: |
-          aws lambda delete-function \
-            --function-name=${{ env.LAMBDA_FUNCTION_NAME }}
+          if aws lambda get-function \
+            --function-name=${{ env.LAMBDA_FUNCTION_NAME }}; then
+            aws lambda delete-function \
+              --function-name=${{ env.LAMBDA_FUNCTION_NAME }}
+          fi
       - name: deploy the demo lambda
         run: |
           aws lambda create-function \
