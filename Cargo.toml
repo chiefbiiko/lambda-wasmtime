@@ -1,16 +1,17 @@
 [package]
 name = "lambda-wasmtime"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Noah Anabiik Schwarz <noah.anabiik.schwarz@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/chiefbiiko/lambda-wasmtime"
 
 [dependencies]
-cranelift-codegen = "0.50.0"
+cranelift-codegen = { version = "0.50.0", features = ["x86"] }
 wasmtime = "0.8.0"
 wasmtime-interface-types = "0.8.0"
 wasmtime-jit = "0.8.0"
 wasmtime-runtime = "0.8.0"
+wasmtime-wasi = "0.8.0"
 wasmtime-wasi-c = "0.8.0"
 wasi-common = "0.8.0"
 wat = "1.0.2"

@@ -13,7 +13,7 @@
 //! includes file system access to `/tmp`, the only accessible host directory in
 //! AWS Lambda.
 
-use anyhow::{anyhow, bail, Context as _, Result as AnyHowResult};
+use anyhow::{bail, Context as _, Result as AnyHowResult};
 use cranelift_codegen::settings::{builder, Builder, Configurable, Flags};
 use reqwest::{
     blocking::{Client, Response},
@@ -33,14 +33,33 @@ use wasmtime::{Config, Engine, Extern, HostRef, Instance, Module, Store};
 use wasmtime_interface_types::{ModuleData, Value};
 use wasmtime_jit::{CompilationStrategy, Features};
 use wasmtime_runtime::{Export, InstanceHandle};
+use wasmtime_wasi::create_wasi_instance;
 use wasmtime_wasi_c::instantiate_wasi_c;
 
-macro_rules! get_hdr_str {
-    ($headers:ident, $key:tt) => {
-        $headers
-            .get($key)
-            .ok_or(anyhow!(format!("missing header {}", $key)))?
-            .to_str()?;
+macro_rules! create_context {
+    ($headers:ident) => {
+        format!(
+            "{{\"function_arn\":\"{}\",\"deadline_ms\":\"{}\",\"request_id\"\
+         :\"{}\",\"trace_id\":\"{}\",\"client_context\":\"{}\",\"cognito_identity\":\"{}\"}}",
+            $headers["Lambda-Runtime-Invoked-Function-Arn"]
+                .to_str()
+                .unwrap_or_default(),
+            $headers["Lambda-Runtime-Deadline-Ms"]
+                .to_str()
+                .unwrap_or_default(),
+            $headers["Lambda-Runtime-Aws-Request-Id"]
+                .to_str()
+                .unwrap_or_default(),
+            $headers["Lambda-Runtime-Trace-Id"]
+                .to_str()
+                .unwrap_or_default(),
+            $headers["Lambda-Runtime-Client-Context"]
+                .to_str()
+                .unwrap_or_default(),
+            $headers["Lambda-Runtime-Cognito-Identity"]
+                .to_str()
+                .unwrap_or_default()
+        );
     };
 }
 
@@ -109,10 +128,14 @@ fn invoke_export(
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     const PKG_VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
 
-    println!("{:?} {:?}", option_env!("CARGO_PKG_NAME"), PKG_VERSION);
-    println!("{:?}", option_env!("CARGO_PKG_DESCRIPTION"));
-    println!("{:?}", option_env!("CARGO_PKG_REPOSITORY"));
-    println!("{:?}", option_env!("CARGO_PKG_AUTHORS"));
+    print!(
+        "{} {}\n{}\n{}\n{}\n",
+        option_env!("CARGO_PKG_NAME").unwrap_or_default(),
+        PKG_VERSION.unwrap_or_default(),
+        option_env!("CARGO_PKG_DESCRIPTION").unwrap_or_default(),
+        option_env!("CARGO_PKG_REPOSITORY").unwrap_or_default(),
+        option_env!("CARGO_PKG_AUTHORS").unwrap_or_default()
+    );
 
     let enable_wasi: bool = var("ENABLE_WASI").unwrap_or_default() != "";
 
@@ -181,7 +204,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Instance::from_handle(&store, handle)
         });
 
+        let wasi_snapshot_preview1 = HostRef::new(create_wasi_instance(
+            &store,
+            &preopen_dirs,
+            &argv,
+            &environ,
+        )?);
+
         module_registry.insert("wasi_unstable".to_owned(), wasi_unstable);
+        module_registry.insert("wasi_snapshot_preview1".to_owned(), wasi_snapshot_preview1);
     }
 
     // Load the main wasm module.
@@ -196,17 +227,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let response: Response = client.get(&api_next).send()?;
         let headers: &HeaderMap = response.headers();
 
-        let context: String = format!(
-            "{{\"function_arn\":\"{}\",\"deadline_ms\":\"{:?}\",\"request_id\"\
-             :\"{:?}\",\"trace_id\":\"{:?}\"}}",
-            get_hdr_str!(headers, "Lambda-Runtime-Invoked-Function-Arn"),
-            get_hdr_str!(headers, "Lambda-Runtime-Deadline-Ms"),
-            get_hdr_str!(headers, "Lambda-Runtime-Request-Id"),
-            get_hdr_str!(headers, "Lambda-Runtime-Trace-Id"),
-        );
-
+        let context: String = create_context!(headers);
         let event: String = response.text()?;
-
         let args: Vec<String> = vec![event, context];
 
         match invoke_export(&instance, &module_data, &handler, args) {
