@@ -14,7 +14,7 @@
 //! AWS Lambda.
 
 use anyhow::{bail, Context as _, Result as AnyHowResult};
-use cranelift_codegen::settings::{builder, Builder, Configurable, Flags};
+// use cranelift_codegen::settings::{builder, Builder, Configurable, Flags};
 use reqwest::{
     blocking::{Client, Response},
     header::HeaderMap,
@@ -28,13 +28,18 @@ use std::{
     path::{Component, Path},
     rc::Rc,
 };
+// use wasi_common::preopen_dir;
+// use wasmtime::{Config, Engine, Extern, HostRef, Instance, Module, Store};
+// use wasmtime_interface_types::{ModuleData, Value};
+// use wasmtime_jit::{CompilationStrategy, Features};
+// use wasmtime_runtime::{Export, InstanceHandle};
+// use wasmtime_wasi::create_wasi_instance;
+// use wasmtime_wasi_c::instantiate_wasi_c;
+
 use wasi_common::preopen_dir;
-use wasmtime::{Config, Engine, Extern, HostRef, Instance, Module, Store};
+use wasmtime::{Config, Engine, Extern, Instance, Module, OptLevel, Store, Strategy}; // Config, Extern
 use wasmtime_interface_types::{ModuleData, Value};
-use wasmtime_jit::{CompilationStrategy, Features};
-use wasmtime_runtime::{Export, InstanceHandle};
-use wasmtime_wasi::create_wasi_instance;
-use wasmtime_wasi_c::instantiate_wasi_c;
+use wasmtime_wasi::{old::snapshot_0::Wasi as WasiSnapshot0, Wasi};
 
 macro_rules! create_context {
     ($headers:ident) => {
@@ -63,57 +68,66 @@ macro_rules! create_context {
     };
 }
 
-fn instantiate_module(
-    store: &HostRef<Store>,
-    module_registry: &HashMap<String, HostRef<Instance>>,
-    path: &Path,
-) -> AnyHowResult<(HostRef<Instance>, HostRef<Module>, Vec<u8>)> {
-    // Read the wasm module binary either as `*.wat` or a raw binary
-    let data: Vec<u8> = wat::parse_file(path.to_path_buf())?;
+// macro_rules! lambda_wasi_args {
+//     ($response: ident) => {
+//         vec![
+//             Value::String($response.text()?),
+//             Value::String(create_context!($response.headers())),
+//         ];
+//     };
+// }
 
-    let module: HostRef<Module> = HostRef::new(Module::new(store, &data)?);
+fn instantiate_module(
+    store: &Store,
+    module_registry: &ModuleRegistry,
+    path: &Path,
+) -> AnyHowResult<(Instance, Module, Vec<u8>)> {
+    // Read the wasm module binary either as `*.wat` or a raw binary
+    let data: Vec<u8> = wat::parse_file(path)?;
+
+    let module: Module = Module::new(store, &data)?;
 
     // Resolve import using module_registry.
     let imports: Vec<Extern> = module
-        .borrow()
         .imports()
         .iter()
         .map(|i| {
-            let module_name: &str = i.module().as_str();
-
-            if let Some(instance) = module_registry.get(module_name) {
-                let field_name: &str = i.name().as_str();
-
-                if let Some(export) = instance.borrow().find_export_by_name(field_name) {
-                    Ok(export.clone())
-                } else {
-                    bail!(
-                        "Import {} was not found in module {}",
-                        field_name,
-                        module_name
-                    )
+            // TODO: annotations
+            let export = match i.module() {
+                "wasi_snapshot_preview1" => {
+                    module_registry.wasi_snapshot_preview1.get_export(i.name())
                 }
-            } else {
-                bail!("Import module {} was not found", module_name)
+                "wasi_unstable" => module_registry.wasi_unstable.get_export(i.name()),
+                other => bail!("import module `{}` was not found", other),
+            };
+
+            match export {
+                Some(export) => Ok(export.clone().into()),
+                None => bail!(
+                    "import `{}` was not found in module `{}`",
+                    i.name(),
+                    i.module()
+                ),
             }
         })
         .collect::<AnyHowResult<Vec<_>, _>>()?;
 
-    let instance: HostRef<Instance> = HostRef::new(Instance::new(store, &module, &imports)?);
+    let instance: Instance =
+        Instance::new(&module, &imports).context(format!("failed to instantiate {:?}", path))?;
 
     Ok((instance, module, data))
 }
 
 fn invoke_export(
-    instance: &HostRef<Instance>,
+    instance: &Instance,
     data: &ModuleData,
     name: &str,
-    args: Vec<String>,
+    args: Vec<Value>,
 ) -> AnyHowResult<String> {
-    let values: Vec<Value> = args.iter().map(|v| Value::String(v.to_owned())).collect();
+    // let values: Vec<Value> = args.iter().map(|v| Value::String(v.to_owned())).collect();
 
     let results: Vec<Value> = data
-        .invoke_export(instance, name, &values)
+        .invoke_export(instance, name, &args)
         .with_context(|| format!("failed to invoke `{}`", name))?;
 
     let return_value: String = results
@@ -123,6 +137,66 @@ fn invoke_export(
         .join("");
 
     Ok(return_value)
+}
+
+// TODO: make this compile
+fn create_static_config() -> AnyHowResult<Config> {
+    let mut config: Config = Config::new();
+
+    config
+        .cranelift_debug_verifier(false)
+        .debug_info(false)
+        .wasm_bulk_memory(true)
+        .wasm_simd(true)
+        .wasm_reference_types(true)
+        .wasm_multi_value(true)
+        .wasm_threads(true)
+        .strategy(Strategy::Cranelift)?;
+
+    config.cranelift_opt_level(OptLevel::Speed);
+
+    Ok(config)
+}
+
+struct ModuleRegistry {
+    wasi_snapshot_preview1: Wasi,
+    wasi_unstable: WasiSnapshot0,
+}
+
+impl ModuleRegistry {
+    fn new(
+        store: &Store,
+        preopen_dirs: &[(String, File)],
+        argv: &[String],
+        env_vars: &[(String, String)],
+    ) -> AnyHowResult<ModuleRegistry> {
+        let mut cx1 = wasi_common::WasiCtxBuilder::new()
+            .inherit_stdio()
+            .args(argv)
+            .envs(env_vars);
+
+        for (name, file) in preopen_dirs {
+            cx1 = cx1.preopened_dir(file.try_clone()?, name);
+        }
+
+        let cx1 = cx1.build()?;
+
+        let mut cx2 = wasi_common::old::snapshot_0::WasiCtxBuilder::new()
+            .inherit_stdio()
+            .args(argv)
+            .envs(env_vars);
+
+        for (name, file) in preopen_dirs {
+            cx2 = cx2.preopened_dir(file.try_clone()?, name);
+        }
+
+        let cx2 = cx2.build()?;
+
+        Ok(ModuleRegistry {
+            wasi_snapshot_preview1: Wasi::new(store, cx1),
+            wasi_unstable: WasiSnapshot0::new(store, cx2),
+        })
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -150,88 +224,107 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let file: String = format!("{}.wasm", _file_handler[0]);
     let handler: String = _file_handler[1].to_owned();
 
-    let mut flag_builder: Builder = builder();
-    let mut features: Features = Default::default();
+    // let mut flag_builder: Builder = builder();
+    // let mut features: Features = Default::default();
 
-    // There are two possible traps for division, and this way
-    // we get the proper one if code traps.
-    flag_builder.enable("avoid_div_traps")?;
+    // // There are two possible traps for division, and this way
+    // // we get the proper one if code traps.
+    // flag_builder.enable("avoid_div_traps")?;
+    //
+    // // SIMD enabled by default
+    // flag_builder.enable("enable_simd")?;
+    // features.simd = true;
+    //
+    // // Enable optimization by default
+    // flag_builder.set("opt_level", "speed")?;
+    //
+    // let mut config: Config = Config::new();
+    //
+    // config
+    //     .features(features)
+    //     .flags(Flags::new(flag_builder))
+    //     .debug_info(false)
+    //     .strategy(CompilationStrategy::Cranelift);
+    let preopen_dirs: Vec<(String, File)> = vec![("/tmp".to_string(), preopen_dir("/tmp")?)];
 
-    // SIMD enabled by default
-    flag_builder.enable("enable_simd")?;
-    features.simd = true;
+    let argv: Vec<String> = vec![Path::new(&file)
+        .components()
+        .next_back()
+        .map(Component::as_os_str)
+        .and_then(OsStr::to_str)
+        .unwrap_or("")
+        .to_owned()];
 
-    // Enable optimization by default
-    flag_builder.set("opt_level", "speed")?;
+    // TODO: check what exact env vars should be passed according to aws
+    let env_vars: Vec<(String, String)> = vec![(
+        "RUNTIME_VERSION".to_string(),
+        PKG_VERSION.unwrap_or_default().to_string(),
+    )];
 
-    let mut config: Config = Config::new();
+    let config: Config = create_static_config()?;
+    let engine: Engine = Engine::new(&config);
+    let store: Store = Store::new(&engine);
+    let module_registry: ModuleRegistry =
+        ModuleRegistry::new(&store, &preopen_dirs, &argv, &env_vars)?;
 
-    config
-        .features(features)
-        .flags(Flags::new(flag_builder))
-        .debug_info(false)
-        .strategy(CompilationStrategy::Cranelift);
+    // let mut module_registry: HashMap<String, HostRef<Instance>> = HashMap::new();
 
-    let engine: HostRef<Engine> = HostRef::new(Engine::new(&config));
-    let store: HostRef<Store> = HostRef::new(Store::new(&engine));
+    // if enable_wasi {
+    //     let preopen_dirs: Vec<(String, File)> = vec![("/tmp".to_string(), preopen_dir("/tmp")?)];
+    //
+    //     let argv: Vec<String> = vec![Path::new(&file)
+    //         .components()
+    //         .next_back()
+    //         .map(Component::as_os_str)
+    //         .and_then(OsStr::to_str)
+    //         .unwrap_or("")
+    //         .to_owned()];
+    //
+    //     // TODO: check what exact env vars should be passed according to aws
+    //     let environ: Vec<(String, String)> = vec![(
+    //         "RUNTIME_VERSION".to_string(),
+    //         PKG_VERSION.unwrap_or_default().to_string(),
+    //     )];
+    //
+    //     let wasi_unstable: HostRef<Instance> = HostRef::new({
+    //         let global_exports: Rc<RefCell<HashMap<String, Option<Export>>>> =
+    //             store.borrow().global_exports().clone();
+    //
+    //         let handle: InstanceHandle =
+    //             instantiate_wasi_c("", global_exports, &preopen_dirs, &argv, &environ)?;
+    //
+    //         Instance::from_handle(&store, handle)
+    //     });
+    //
+    //     let wasi_snapshot_preview1 = HostRef::new(create_wasi_instance(
+    //         &store,
+    //         &preopen_dirs,
+    //         &argv,
+    //         &environ,
+    //     )?);
+    //
+    //     module_registry.insert("wasi_unstable".to_owned(), wasi_unstable);
+    //     module_registry.insert("wasi_snapshot_preview1".to_owned(), wasi_snapshot_preview1);
+    // }
 
-    let mut module_registry: HashMap<String, HostRef<Instance>> = HashMap::new();
-
-    if enable_wasi {
-        let preopen_dirs: Vec<(String, File)> = vec![("/tmp".to_string(), preopen_dir("/tmp")?)];
-
-        let argv: Vec<String> = vec![Path::new(&file)
-            .components()
-            .next_back()
-            .map(Component::as_os_str)
-            .and_then(OsStr::to_str)
-            .unwrap_or("")
-            .to_owned()];
-
-        // TODO: check what exact env vars should be passed according to aws
-        let environ: Vec<(String, String)> = vec![(
-            "RUNTIME_VERSION".to_string(),
-            PKG_VERSION.unwrap_or_default().to_string(),
-        )];
-
-        let wasi_unstable: HostRef<Instance> = HostRef::new({
-            let global_exports: Rc<RefCell<HashMap<String, Option<Export>>>> =
-                store.borrow().global_exports().clone();
-
-            let handle: InstanceHandle =
-                instantiate_wasi_c("", global_exports, &preopen_dirs, &argv, &environ)?;
-
-            Instance::from_handle(&store, handle)
-        });
-
-        let wasi_snapshot_preview1 = HostRef::new(create_wasi_instance(
-            &store,
-            &preopen_dirs,
-            &argv,
-            &environ,
-        )?);
-
-        module_registry.insert("wasi_unstable".to_owned(), wasi_unstable);
-        module_registry.insert("wasi_snapshot_preview1".to_owned(), wasi_snapshot_preview1);
-    }
+    let main_module_path: &Path = Path::new(&file);
 
     // Load the main wasm module.
-    let (instance, _module, data): (HostRef<Instance>, HostRef<Module>, Vec<u8>) =
-        instantiate_module(&store, &module_registry, Path::new(&file))?;
+    let (instance, _module, data): (Instance, Module, Vec<u8>) =
+        instantiate_module(&store, &module_registry, main_module_path)?;
 
-    let module_data: ModuleData = ModuleData::new(&data)?;
+    let main_module_data: ModuleData = ModuleData::new(&data)?;
 
     let client: Client = Client::new();
 
     loop {
         let response: Response = client.get(&api_next).send()?;
         let headers: &HeaderMap = response.headers();
-
         let context: String = create_context!(headers);
         let event: String = response.text()?;
-        let args: Vec<String> = vec![event, context];
+        let args: Vec<Value> = vec![Value::String(event), Value::String(context)];
 
-        match invoke_export(&instance, &module_data, &handler, args) {
+        match invoke_export(&instance, &main_module_data, &handler, args) {
             Ok(result) => client.post(&api_ok).body(result).send()?,
             _ => client
                 .post(&api_err)
