@@ -20,13 +20,13 @@ use reqwest::{
     header::HeaderMap,
 };
 use std::{
-    cell::RefCell,
+    // cell::RefCell,
     collections::HashMap,
     env::var,
     ffi::OsStr,
     fs::File,
     path::{Component, Path},
-    rc::Rc,
+    // rc::Rc,
 };
 // use wasi_common::preopen_dir;
 // use wasmtime::{Config, Engine, Extern, HostRef, Instance, Module, Store};
@@ -37,7 +37,7 @@ use std::{
 // use wasmtime_wasi_c::instantiate_wasi_c;
 
 use wasi_common::preopen_dir;
-use wasmtime::{Config, Engine, Extern, Instance, Module, OptLevel, Store, Strategy}; // Config, Extern
+use wasmtime::{Config, Engine, Func, Instance, Module, OptLevel, Store, Strategy}; // Config, Extern
 use wasmtime_interface_types::{ModuleData, Value};
 use wasmtime_wasi::{old::snapshot_0::Wasi as WasiSnapshot0, Wasi};
 
@@ -88,12 +88,11 @@ fn instantiate_module(
     let module: Module = Module::new(store, &data)?;
 
     // Resolve import using module_registry.
-    let imports: Vec<Extern> = module
+    let imports = module // : Vec<Extern>
         .imports()
         .iter()
         .map(|i| {
-            // TODO: annotations
-            let export = match i.module() {
+            let export: Option<&Func> = match i.module() {
                 "wasi_snapshot_preview1" => {
                     module_registry.wasi_snapshot_preview1.get_export(i.name())
                 }
@@ -124,8 +123,6 @@ fn invoke_export(
     name: &str,
     args: Vec<Value>,
 ) -> AnyHowResult<String> {
-    // let values: Vec<Value> = args.iter().map(|v| Value::String(v.to_owned())).collect();
-
     let results: Vec<Value> = data
         .invoke_export(instance, name, &args)
         .with_context(|| format!("failed to invoke `{}`", name))?;
@@ -139,18 +136,17 @@ fn invoke_export(
     Ok(return_value)
 }
 
-// TODO: make this compile
 fn create_static_config() -> AnyHowResult<Config> {
     let mut config: Config = Config::new();
 
     config
         .cranelift_debug_verifier(false)
         .debug_info(false)
-        .wasm_bulk_memory(true)
-        .wasm_simd(true)
+        .wasm_bulk_memory(false)
+        .wasm_simd(false)
         .wasm_reference_types(true)
         .wasm_multi_value(true)
-        .wasm_threads(true)
+        .wasm_threads(false)
         .strategy(Strategy::Cranelift)?;
 
     config.cranelift_opt_level(OptLevel::Speed);
@@ -170,6 +166,7 @@ impl ModuleRegistry {
         argv: &[String],
         env_vars: &[(String, String)],
     ) -> AnyHowResult<ModuleRegistry> {
+        // TODO: annotations
         let mut cx1 = wasi_common::WasiCtxBuilder::new()
             .inherit_stdio()
             .args(argv)
@@ -211,7 +208,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         option_env!("CARGO_PKG_AUTHORS").unwrap_or_default()
     );
 
-    let enable_wasi: bool = var("ENABLE_WASI").unwrap_or_default() != "";
+    // let enable_wasi: bool = var("ENABLE_WASI").unwrap_or_default() != "";
 
     let runtime_api_host: String = var("AWS_LAMBDA_RUNTIME_API")?;
     let runtime_api: String = format!("http://{}/2018-06-01/runtime", runtime_api_host);

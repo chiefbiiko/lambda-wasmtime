@@ -10,11 +10,14 @@ repository = "https://github.com/chiefbiiko/lambda-wasmtime"
 wasmtime = "0.11.0"
 wasmtime-interface-types = "0.11.0"
 wasmtime-jit = "0.11.0"
-wasmtime-runtime = "0.11.0"
+# wasmtime-runtime = "0.11.0"
 wasmtime-wasi = "0.11.0"
 # wasmtime-wasi-c = "0.11.0"
 wasi-common = "0.11.0"
 wat = "1.0.2"
 anyhow = "1.0.19"
 reqwest = { version = "0.10.1", features = ["blocking"], default-features = false }
-proc-macro2 = "1.0.8"
+# proc-macro2 = "1.0.8"
+
+[dev-dependencies]
+wasmtime-runtime = "0.11.0"
