@@ -77,7 +77,7 @@ fn get_runtime_endpoints() -> AnyHowResult<(String, String, String)> {
     ))
 }
 
-// TODO: allow passing wat file
+// TODO: allow passing wat file?
 fn get_module_info() -> AnyHowResult<(String, String)> {
     let file_handler: Vec<String> = var("_HANDLER")?.split('.').map(str::to_string).collect();
     let file: String = format!("{}.wasm", file_handler[0]);
@@ -93,8 +93,8 @@ fn create_engine_config() -> AnyHowResult<Config> {
         .debug_info(false)
         .wasm_bulk_memory(false)
         .wasm_simd(false)
-        .wasm_reference_types(true)
-        .wasm_multi_value(true)
+        .wasm_reference_types(false)
+        .wasm_multi_value(false)
         .wasm_threads(false)
         .strategy(Strategy::Cranelift)?;
 
