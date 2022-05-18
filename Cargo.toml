@@ -8,8 +8,8 @@ anyhow = "1.0"
 futures = "0.3"
 http = "0.2"
 lambda_runtime = "0.5"
+openssl = { version = "0.10", features = ["vendored"] }
 serde = "1"
-structopt = "0.3"
 tokio = { version = "1.4", features = [ "full" ] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -19,6 +19,11 @@ wasi-common = "0.34"
 wasi-cap-std-sync = "0.34"
 wasi-experimental-http-wasmtime = "0.9"
 
+[workspace]
+    members = [
+        "demo"
+    ]
+
 [[bin]]
 name = "bootstrap"
 path = "src/main.rs"
@@ -27,3 +32,6 @@ path = "src/main.rs"
 
 [package.metadata.lambda.env]
 RUST_LOG = "debug"
+
+[package.metadata]
+wasm-opt = false
