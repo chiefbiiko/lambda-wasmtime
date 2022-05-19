@@ -2,7 +2,7 @@
 name = "handler"
 version = "0.1.0"
 authors = ["Noah Anabiik Schwarz <noah.anabiik.schwarz@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [lib]
 crate-type = ['cdylib']
@@ -12,6 +12,7 @@ bytes = "1"
 http  = "0.2"
 serde_json = "1"
 wasi-experimental-http = "0.9"
+wit-bindgen-rust = { git = "https://github.com/bytecodealliance/wit-bindgen", rev = "d086240c74eabae6f225c90c74d705fe10f2d8dc" }
 
 [package.metadata]
 wasm-opt = false
