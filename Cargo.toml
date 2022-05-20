@@ -15,7 +15,7 @@ wasmtime = "0.34"
 wasmtime-wasi = "0.34"
 wasi-common = "0.34"
 wasi-cap-std-sync = "0.34"
-wasi-experimental-http-wasmtime = "0.9"
+wasi-experimental-http-wasmtime = { git = "https://github.com/deislabs/wasi-experimental-http", rev = "a4e1ee14a1f2d520289185537c64c315c87c1836" }
 wit-bindgen-wasmtime = { git = "https://github.com/bytecodealliance/wit-bindgen", rev = "d086240c74eabae6f225c90c74d705fe10f2d8dc" }
 
 [workspace]

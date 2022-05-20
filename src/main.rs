@@ -1,15 +1,15 @@
-use std::env;
+mod engine;
+use std::{env, sync::Arc};
 
-use anyhow::Error;
+use anyhow::{Error, Result};
+use engine::{Builder, ExecutionContextConfiguration};
 use lambda_runtime::{service_fn, LambdaEvent};
 use serde_json::Value;
-use wasi_cap_std_sync::WasiCtxBuilder;
-use wasi_experimental_http_wasmtime::HttpCtx;
-use wasmtime::{Linker, Store};
-use wasmtime_wasi::*;
 
-wit_bindgen_wasmtime::import!("./handler.wit");
-use handler::*;
+wit_bindgen_wasmtime::import!("./lambda.wit");
+use lambda::{Lambda, LambdaData};
+
+type ExecutionContext = engine::ExecutionContext<LambdaData>;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
@@ -24,42 +24,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         .without_time()
         .init();
 
-    let (filename, allowed_hosts, max_concurrency) = retrieve_config();
-    
-    let engine = Engine::new()?;
-    let mut linker: Linker<RuntimeContext> = Linker::new(&engine.inner());
-    wasmtime_wasi::add_to_linker(&mut linker, |cx| &mut cx.wasi)?;
+    let builder: ExecutionContext = Builder::build_default(LambdaFunction::retrieve_config()?)?;
 
-    let linker_ref = &linker;
-    let module_ref = &wasmtime::Module::from_file(linker.engine(), filename)?;
-    let allowed_hosts_ref = &allowed_hosts;
-    let max_concurrency_ref = &max_concurrency;
+    let lambda = LambdaFunction::new(builder);
+    let engine_ref = &lambda.engine;
 
     let handler_func = move |event: LambdaEvent<Value>| async move {
         tracing::info!("{:?}", event);
-        let mut linker = linker_ref.to_owned();
-        let allowed_hosts = allowed_hosts_ref.to_owned();
-        let max_concurrency = max_concurrency_ref.to_owned();
-
-        let engine = linker_ref.engine();
-
-        let ctx = RuntimeContext {
-            wasi: default_wasi()?,
-            http: HttpCtx::new(Some(allowed_hosts), max_concurrency)?,
-            data: Some(handler::HandlerData {}),
-        };
-
-        // Link `wasi_experimental_http`
-        ctx.http.add_to_linker(&mut linker)?;
-
-        let mut store: Store<RuntimeContext> = Store::new(engine, ctx);
-    
-        let (plugin, _) = Handler::instantiate(&mut store, module_ref, &mut linker, |ctx: &mut RuntimeContext| {
-            ctx.data.as_mut().unwrap()
+        let (mut store, instance) = engine_ref.prepare(
+            Some(LambdaData {}),
+        )?;
+        let component = Lambda::new(&mut store, &instance, |host| {
+            host.data.as_mut().unwrap()
         })?;
-
-        let resp = match plugin
-            .handler(store, serde_json::to_string(&event.payload).unwrap().as_str(), None)
+        let resp = match component
+            .handler(store, serde_json::to_string(&event.payload).unwrap().as_str(), Some(lambda::Context {
+                request_id: event.context.request_id.as_str(),
+                deadline: event.context.deadline,
+                invoked_function_arn: event.context.invoked_function_arn.as_str(),
+                xray_trace_id: event.context.xray_trace_id.as_str(),
+            }))
             .expect("runtime failed to retrieve handler")
         {
             Ok(output) => serde_json::from_str::<Value>(output.as_str()).unwrap(),
@@ -78,66 +62,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     Ok(())
 }
 
-fn retrieve_config() -> (String, Vec<String>, Option<u32>) {
-    let mut task_root = "".to_string();
-    let mut handler_file = "".to_string();
-    let mut allowed_hosts: Vec<String> = Vec::new();
-    let mut max_concurrency: Option<u32> = None;
-    for (key, value) in env::vars() {
-        if key == "_HANDLER" {
-            handler_file = value
-        } else if key == "ALLOWED_HOSTS" {
-            allowed_hosts = value
-                .split(',')
-                .into_iter()
-                .map(|x| x.to_string())
-                .collect();
-        } else if key == "LAMBDA_TASK_ROOT" {
-            task_root = value;
-        } else if key == "MAX_CONCURRENCY" {
-            max_concurrency = Some(value.parse().unwrap())
+#[derive(Clone)]
+pub(crate) struct LambdaFunction {
+    /// The Lambda execution context.
+    engine: Arc<ExecutionContext>,
+}
+
+impl LambdaFunction {
+    pub fn retrieve_config() -> Result<ExecutionContextConfiguration> {
+        let mut task_root: Option<String> = None;
+        let mut handler_file: Option<String> = None;
+        let mut allowed_hosts: Option<Vec<String>> = None;
+        let mut max_concurrent_requests: Option<u32> = None;
+        for (key, value) in env::vars() {
+            if key == "_HANDLER" {
+                handler_file = Some(value);
+            } else if key == "ALLOWED_HOSTS" {
+                allowed_hosts = Some(value
+                    .split(',')
+                    .into_iter()
+                    .map(|x| x.to_string())
+                    .collect());
+            } else if key == "LAMBDA_TASK_ROOT" {
+                task_root = Some(value);
+            } else if key == "MAX_CONCURRENCY" {
+                max_concurrent_requests = Some(value.parse().unwrap())
+            }
+        }
+        let source = format!("{}/{}.wasm", task_root.unwrap(), handler_file.unwrap());
+    
+        Ok(ExecutionContextConfiguration {
+            id: String::from("Lambda"),
+            source,
+            allowed_hosts,
+            max_concurrent_requests,
+        })
+    }
+
+    pub fn new(execution_context: ExecutionContext ) -> Self {
+        Self {
+            engine: Arc::new(execution_context),
         }
     }
-    let filename = format!("{}/{}.wasm", task_root, handler_file);
-
-    (filename, allowed_hosts, max_concurrency)
-}
-
-/// Top-level runtime context data to be passed to a component.
-pub(crate) struct RuntimeContext {
-    pub wasi: WasiCtx,
-    pub http: HttpCtx,
-    pub data: Option<handler::HandlerData>,
-}
-
-/// The engine struct that encapsulate wasmtime engine
-#[derive(Clone)]
-pub struct Engine(wasmtime::Engine);
-
-impl Engine {
-    /// Create a new engine and initialize it.
-    pub fn new() -> Result<Self, Error> {
-        // In order for Wasmtime to run WebAssembly components, multi memory
-        // and module linking must always be enabled.
-        let mut config = wasmtime::Config::default();
-        config.wasm_backtrace_details(wasmtime::WasmBacktraceDetails::Enable);
-        config.wasm_multi_memory(true);
-        config.wasm_module_linking(true);
-        config.wasm_simd(true);
-    
-        Ok(Self(wasmtime::Engine::new(&config)?))
-    }
-
-    /// Get a clone of the internal `wasmtime::Engine`.
-    pub fn inner(&self) -> wasmtime::Engine {
-        self.0.clone()
-    }
-}
-
-fn default_wasi() -> Result<WasiCtx, Error> {
-    let ctx = WasiCtxBuilder::new()
-        .inherit_stdio()
-        .inherit_args()?
-        .inherit_env()?;
-    Ok(ctx.build())
 }

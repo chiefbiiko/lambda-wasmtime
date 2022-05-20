@@ -59,7 +59,7 @@ record context {
     ///  Lambda function configuration from the local environment variables.
     ///  Includes information such as the function name, memory allocation,
     ///  version, and log streams.
-    ///env-config: config
+    /// env-config: config
 }
 
 

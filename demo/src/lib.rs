@@ -3,11 +3,11 @@ use http::{request::Builder, Method};
 use serde_json::{from_str as from_json, Value};
 use wasi_experimental_http::request;
 
-use handler::*;
-wit_bindgen_rust::export!("../handler.wit");
+use lambda::{Context, Error, Event, Output};
+wit_bindgen_rust::export!("../lambda.wit");
 
-struct Handler {}
-impl handler::Handler for Handler {
+struct Lambda {}
+impl lambda::Lambda for Lambda {
     fn handler(event: Event, context: Option<Context>) -> Result<Output, Error> {
         let json = from_json::<Value>(event.as_str()).unwrap();
         println!("{:?} {:?}", json, context);
@@ -15,9 +15,9 @@ impl handler::Handler for Handler {
         let req = Builder::new()
             .method(Method::POST)
             .uri(&url)
-            .header("Content-Type", "text/plain")
+            .header("Content-Type", "application/json")
             .header("abc", "def");
-        let b = Bytes::from("Testing");
+        let b = Bytes::from(event);
         let req = req.body(Some(b)).unwrap();
         println!("{:?}", req);
 
