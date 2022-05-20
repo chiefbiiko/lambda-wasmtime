@@ -12,8 +12,10 @@ struct Lambda {}
 
 impl lambda::Lambda for Lambda {
     fn handler(event: Event, context: Option<Context>) -> Result<Output, Error> {
-        let json = from_json::<Value>(event.as_str()).unwrap();
-        println!("{:?} {:?}", json, context);
+        let event_json = from_json::<Value>(event.as_str()).unwrap();
+        println!("Event payload: {:?}", event_json);
+        let context_json = from_json::<Value>(context.unwrap().as_str()).unwrap();
+        println!("Execution context: {:?}", context_json);
         let url = "https://postman-echo.com/post".to_string();
 
         let future = async move {
@@ -35,9 +37,9 @@ impl lambda::Lambda for Lambda {
             let str = std::str::from_utf8(&res.body_read_all().unwrap())
                 .unwrap()
                 .to_owned();
-            println!("{:#?}", res.header_get("content-type".to_string()).unwrap());
+            println!("Content type: {:#?}", res.header_get("content-type".to_string()).unwrap());
             let status_code = res.status_code;
-            println!("{:#?}", status_code);
+            println!("Status code: {:#?}", status_code);
             Ok(str)
         };
         let res: Result<Output, Error> = tokio::runtime::Builder::new_current_thread()
@@ -45,7 +47,7 @@ impl lambda::Lambda for Lambda {
             .build()
             .unwrap()
             .block_on(future);
-        println!("{:?}", res);
+        println!("String response: {:?}", res);
        
         res
     }

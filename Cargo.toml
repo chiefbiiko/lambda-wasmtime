@@ -36,4 +36,4 @@ RUST_LOG = "debug"
 wasm-opt = true
 
 [profile.release]
-opt-level = 'z'
+lto = true

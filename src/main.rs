@@ -5,6 +5,7 @@ use anyhow::{Error, Result};
 use engine::{Builder, ExecutionContextConfiguration};
 use lambda_runtime::{service_fn, LambdaEvent};
 use serde_json::Value;
+use tracing::log;
 
 wit_bindgen_wasmtime::import!("./lambda.wit");
 use lambda::{Lambda, LambdaData};
@@ -30,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let engine_ref = &lambda.engine;
 
     let handler_func = move |event: LambdaEvent<Value>| async move {
-        tracing::info!("{:?}", event);
+        log::info!("{:?}", event);
         let (mut store, instance) = engine_ref.prepare(
             Some(LambdaData {}),
         )?;
@@ -38,18 +39,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
             host.data.as_mut().unwrap()
         })?;
         let resp = match component
-            .handler(store, serde_json::to_string(&event.payload).unwrap().as_str(), Some(lambda::Context {
-                request_id: event.context.request_id.as_str(),
-                deadline: event.context.deadline,
-                invoked_function_arn: event.context.invoked_function_arn.as_str(),
-                xray_trace_id: event.context.xray_trace_id.as_str(),
-            }))
+            .handler(store, serde_json::to_string(&event.payload).unwrap().as_str(), Some(serde_json::to_string(&event.context).unwrap().as_str()))
             .expect("runtime failed to retrieve handler")
         {
-            Ok(output) => serde_json::from_str::<Value>(output.as_str()).unwrap(),
+            Ok(output) => serde_json::from_str(output.as_str()).unwrap(),
             Err(_error) => serde_json::json!("error"),
         };
-        println!("{:?}", resp);
+        log::info!("JSON response: {:?}", resp);
 
         // return `Response` (it will be serialized to JSON automatically by the runtime)
         Result::<Value, Error>::Ok(resp)

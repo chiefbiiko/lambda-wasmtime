@@ -14,7 +14,7 @@ EOL
 
 cd "${1:-"$(pwd)"}"
 
-wasm=../target/wasm32-wasi/release/handler.wasm
+module=../target/wasm32-wasi/release/handler
 event="{\"data\":\"$(base64 ./luigi.png)\"}"
 context="{}"
 
@@ -33,9 +33,12 @@ cargo wasi build --release
 #   viu -ntv ./luigi.png ./thumbnail.png
 # fi
 
+wasm2wat "$module.wasm" --no-debug-names -o "$module.wat"
+sed -Ein "s/[[:blank:]]{2}/ /g" "$module.wat"
+
 # zipup a demo lambda bundle
 # can be deployed on aws with the runtime layer - get its latest release from:
 # https://github.com/chiefbiiko/lambda-wasmtime/releases/latest
 # make sure to provision the lambda with approx. 2048 MB memory and a 5s timeout
 # note: all of this is mvp and experimental at the moment
-zip -j ./handler.zip "$wasm" > /dev/null
+zip -j ./handler.zip "$module.wasm" "$module.wat" > /dev/null

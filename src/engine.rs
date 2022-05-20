@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{Error, Result, Context};
-use tracing::instrument;
+use tracing::{instrument, log};
 use wasi_cap_std_sync::WasiCtxBuilder;
 use wasi_experimental_http_wasmtime::{HttpCtx, HttpState};
 use wasmtime::{Instance, InstancePre, Linker, Store};
@@ -81,7 +81,11 @@ impl<T: Default + 'static> Builder<T> {
     /// Configures the WASI linker imports for the current execution context.
     pub fn link_wasi(&mut self) -> Result<&mut Self> {
         wasmtime_wasi::add_to_linker(&mut self.linker, |ctx| ctx.wasi.as_mut().unwrap())?;
-        // Link `wasi_experimental_http`
+        Ok(self)
+    }
+
+    /// Configures the `wasi_experimental_http` linker imports for the current execution context.
+    pub fn link_wasi_http(&mut self) -> Result<&mut Self> {
         let http = HttpState::new()?;
         http.add_to_linker(&mut self.linker, |ctx| {
             ctx.http.as_ref().unwrap()
@@ -99,23 +103,12 @@ impl<T: Default + 'static> Builder<T> {
                 self.config.source
             )
         })?;
-        tracing::info!("Created module for component {} from file {:?}", self.config.id, self.config.source);
-
-        // let (component, _) = Arc::new(Lambda::<RuntimeContext<LambdaData>>::instantiate(&mut self.store, &module, &mut self.linker, |ctx| {
-        //     ctx.data.as_mut().unwrap()
-        // })?);
-        // Lambda::add_to_linker(&mut self.linker, |ctx: &mut RuntimeContext<LambdaData>| {
-        //     ctx.data.as_mut().unwrap()
-        // })?;
-        // let instance = self.linker.instantiate(&mut self.store, &module)?;
-        // let instance = Lambda::new(&mut self.store, &instance,|ctx| {
-        //     ctx.data.as_mut().unwrap()
-        // })?;
+        log::info!("Created module for component {} from file {:?}", self.config.id, self.config.source);
 
         let component = Arc::new(self.linker.instantiate_pre(&mut self.store, &module)?);
-        tracing::info!("Created pre-instance from module for component {}.", self.config.id);
+        log::info!("Created pre-instance from module for component {}.", self.config.id);
 
-        tracing::info!("Execution context initialized.");
+        log::info!("Execution context initialized.");
 
         Ok(ExecutionContext {
             config: self.config,
@@ -126,7 +119,7 @@ impl<T: Default + 'static> Builder<T> {
 
     /// Configures default host interface implementations.
     pub fn link_defaults(&mut self) -> Result<&mut Self> {
-        self.link_wasi()
+        self.link_wasi()?.link_wasi_http()
     }
 
     /// Builds a new default instance of the execution context.
@@ -156,7 +149,7 @@ impl<T: Default> ExecutionContext<T> {
         &self,
         data: Option<T>,
     ) -> Result<(Store<RuntimeContext<T>>, Instance)> {
-        tracing::info!("Creating store...");
+        log::info!("Creating store...");
         let mut ctx = RuntimeContext::default();
         let wasi_ctx = WasiCtxBuilder::new()
             .inherit_stdio()
