@@ -33,4 +33,7 @@ path = "src/main.rs"
 RUST_LOG = "debug"
 
 [package.metadata]
-wasm-opt = false
+wasm-opt = true
+
+[profile.release]
+opt-level = 'z'
