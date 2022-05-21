@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::{Error, Result, Context};
+use anyhow::{Context, Error, Result};
 use tracing::{instrument, log};
 use wasi_cap_std_sync::WasiCtxBuilder;
 use wasi_experimental_http_wasmtime::{HttpCtx, HttpState};
@@ -37,7 +37,7 @@ impl Engine {
         config.wasm_multi_memory(true);
         config.wasm_module_linking(true);
         config.wasm_simd(true);
-    
+
         Ok(Self(wasmtime::Engine::new(&config)?))
     }
 
@@ -87,26 +87,31 @@ impl<T: Default + 'static> Builder<T> {
     /// Configures the `wasi_experimental_http` linker imports for the current execution context.
     pub fn link_wasi_http(&mut self) -> Result<&mut Self> {
         let http = HttpState::new()?;
-        http.add_to_linker(&mut self.linker, |ctx| {
-            ctx.http.as_ref().unwrap()
-        })?;
+        http.add_to_linker(&mut self.linker, |ctx| ctx.http.as_ref().unwrap())?;
         Ok(self)
     }
 
     /// Builds a new instance of the execution context.
     #[instrument(skip(self))]
     pub fn build(mut self) -> Result<ExecutionContext<T>> {
-        let module = wasmtime::Module::from_file(&self.engine.0, &self.config.source).with_context(|| {
-            format!(
-                "Cannot create module for component {} from file {}",
-                self.config.id,
-                self.config.source
-            )
-        })?;
-        log::info!("Created module for component {} from file {:?}", self.config.id, self.config.source);
+        let module = wasmtime::Module::from_file(&self.engine.0, &self.config.source)
+            .with_context(|| {
+                format!(
+                    "Cannot create module for component {} from file {}",
+                    self.config.id, self.config.source
+                )
+            })?;
+        log::info!(
+            "Created module for component {} from file {:?}",
+            self.config.id,
+            self.config.source
+        );
 
         let component = Arc::new(self.linker.instantiate_pre(&mut self.store, &module)?);
-        log::info!("Created pre-instance from module for component {}.", self.config.id);
+        log::info!(
+            "Created pre-instance from module for component {}.",
+            self.config.id
+        );
 
         log::info!("Execution context initialized.");
 
@@ -123,9 +128,7 @@ impl<T: Default + 'static> Builder<T> {
     }
 
     /// Builds a new default instance of the execution context.
-    pub fn build_default(
-        config: ExecutionContextConfiguration,
-    ) -> Result<ExecutionContext<T>> {
+    pub fn build_default(config: ExecutionContextConfiguration) -> Result<ExecutionContext<T>> {
         let mut builder = Self::new(config)?;
         builder.link_defaults()?;
         builder.build()
@@ -145,10 +148,7 @@ pub(crate) struct ExecutionContext<T: Default> {
 
 impl<T: Default> ExecutionContext<T> {
     /// Creates a store for a given component given its configuration and runtime data.
-    pub fn prepare(
-        &self,
-        data: Option<T>,
-    ) -> Result<(Store<RuntimeContext<T>>, Instance)> {
+    pub fn prepare(&self, data: Option<T>) -> Result<(Store<RuntimeContext<T>>, Instance)> {
         log::info!("Creating store...");
         let mut ctx = RuntimeContext::default();
         let wasi_ctx = WasiCtxBuilder::new()

@@ -32,14 +32,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
 
     let handler_func = move |event: LambdaEvent<Value>| async move {
         log::info!("{:?}", event);
-        let (mut store, instance) = engine_ref.prepare(
-            Some(LambdaData {}),
-        )?;
-        let component = Lambda::new(&mut store, &instance, |host| {
-            host.data.as_mut().unwrap()
-        })?;
+        let (mut store, instance) = engine_ref.prepare(Some(LambdaData {}))?;
+        let component = Lambda::new(&mut store, &instance, |host| host.data.as_mut().unwrap())?;
         let resp = match component
-            .handler(store, serde_json::to_string(&event.payload).unwrap().as_str(), Some(serde_json::to_string(&event.context).unwrap().as_str()))
+            .handler(
+                store,
+                serde_json::to_string(&event.payload).unwrap().as_str(),
+                Some(serde_json::to_string(&event.context).unwrap().as_str()),
+            )
             .expect("runtime failed to retrieve handler")
         {
             Ok(output) => serde_json::from_str(output.as_str()).unwrap(),
@@ -74,11 +74,13 @@ impl LambdaFunction {
             if key == "_HANDLER" {
                 handler_file = Some(value);
             } else if key == "ALLOWED_HOSTS" {
-                allowed_hosts = Some(value
-                    .split(',')
-                    .into_iter()
-                    .map(|x| x.to_string())
-                    .collect());
+                allowed_hosts = Some(
+                    value
+                        .split(',')
+                        .into_iter()
+                        .map(|x| x.to_string())
+                        .collect(),
+                );
             } else if key == "LAMBDA_TASK_ROOT" {
                 task_root = Some(value);
             } else if key == "MAX_CONCURRENCY" {
@@ -86,7 +88,7 @@ impl LambdaFunction {
             }
         }
         let source = format!("{}/{}.wasm", task_root.unwrap(), handler_file.unwrap());
-    
+
         Ok(ExecutionContextConfiguration {
             id: String::from("Lambda"),
             source,
@@ -95,7 +97,7 @@ impl LambdaFunction {
         })
     }
 
-    pub fn new(execution_context: ExecutionContext ) -> Self {
+    pub fn new(execution_context: ExecutionContext) -> Self {
         Self {
             engine: Arc::new(execution_context),
         }

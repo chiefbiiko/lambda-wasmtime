@@ -1,0 +1,30 @@
+{
+  "name": "lambda-wasmtime",
+  "version": "0.1.0",
+  "bin": {
+    "cdk": "bin/cdk.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "prepare-layer": "cargo lambda build --release --target x86_64-unknown-linux-gnu --lambda-dir target",
+    "prepare-function": "cargo wasi build --package handler --release && wasm2wat target/wasm32-wasi/release/handler.wasm --no-debug-names -o target/wasm32-wasi/release/handler.wat && sed -Ein \"s/[[:blank:]]{2}/ /g\" target/wasm32-wasi/release/handler.wat",
+    "deploy": "npm run prepare-layer && npm run prepare-function && cdk deploy",
+    "lambda-watch": "LAMBDA_TASK_ROOT=\"$PWD/target/wasm32-wasi/release\" _HANDLER=handler ALLOWED_HOSTS=\"insecure:allow-all\" cargo lambda watch",
+    "lambda-invoke": "cargo lambda invoke bootstrap --data-ascii '{\"input\": 100}'"
+  },
+  "devDependencies": {
+    "@tsconfig/node14": "^1.0.1",
+    "@types/node": "10.17.27",
+    "aws-cdk": "^2.25.0",
+    "ts-node": "^10.7.0",
+    "typescript": "^4.6.4"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.25.0",
+    "constructs": "^10.0.0",
+    "source-map-support": "^0.5.21"
+  }
+}
