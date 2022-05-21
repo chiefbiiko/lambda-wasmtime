@@ -21,7 +21,8 @@ wit-bindgen-wasmtime = { git = "https://github.com/bytecodealliance/wit-bindgen"
 
 [workspace]
     members = [
-        "examples/http-rust"
+        "examples/http-rust",
+        "examples/thumbnail-maker"
     ]
 
 [[bin]]
