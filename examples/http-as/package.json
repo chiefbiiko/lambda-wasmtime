@@ -1,0 +1,15 @@
+{
+  "name": "handler",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "asc index.ts -b build/handler.wasm --use abort=wasi_abort --debug"
+  },
+  "dependencies": {
+    "@deislabs/wasi-experimental-http": "https://gitpkg.now.sh/deislabs/wasi-experimental-http/crates/as?a4e1ee14a1f2d520289185537c64c315c87c1836",
+    "as-wasi": "0.4.4"
+  },
+  "devDependencies": {
+    "assemblyscript": "^0.18.16"
+  }
+}
