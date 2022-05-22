@@ -1,5 +1,5 @@
 [package]
-name = "lambda-wasmtime-http"
+name = "lambda-wasmtime"
 version = "0.1.0"
 authors = ["Eduardo Rodrigues <eduardomourar@users.noreply.github.com>"]
 edition = "2021"
