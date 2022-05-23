@@ -1,4 +1,4 @@
-use std::{thread::sleep, time::Duration};
+use std::{env, thread::sleep, time::Duration};
 
 use bytes::Bytes;
 use http::{request::Builder, Method};
@@ -21,6 +21,28 @@ impl lambda::Lambda for Lambda {
             println!("future starting...");
             work().await;
             sleep(Duration::from_millis(1000));
+
+            let task_root = env::vars()
+                .find_map(|(key, value)| {
+                    if key == "LAMBDA_TASK_ROOT" {
+                        Some(value)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap();
+            println!("Task Root {}", task_root);
+            let task_dir = std::fs::read_dir("/var/task").unwrap();
+            for child in task_dir {
+                println!(
+                    "/var/task/{}",
+                    child.unwrap().file_name().into_string().unwrap()
+                );
+            }
+            let temp_dir = std::fs::read_dir("/tmp").unwrap();
+            for child in temp_dir {
+                println!("/tmp/{}", child.unwrap().file_name().into_string().unwrap());
+            }
 
             println!("making http request...");
             let url = "https://postman-echo.com/post".to_string();

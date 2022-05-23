@@ -11,6 +11,8 @@ use wasmtime_wasi::*;
 #[derive(Clone, Debug, Default)]
 pub(crate) struct ExecutionContextConfiguration {
     pub id: String,
+    pub task_directory: String,
+    pub temp_directory: String,
     pub source: String,
     pub allowed_hosts: Option<Vec<String>>,
     pub max_concurrent_requests: Option<u32>,
@@ -151,10 +153,14 @@ impl<T: Default> ExecutionContext<T> {
     pub fn prepare(&self, data: Option<T>) -> Result<(Store<RuntimeContext<T>>, Instance)> {
         log::info!("Creating store...");
         let mut ctx = RuntimeContext::default();
+        let task_dir_path = std::fs::File::open(&self.config.task_directory)?;
+        let temp_dir_path = std::fs::File::open(&self.config.temp_directory)?;
         let wasi_ctx = WasiCtxBuilder::new()
             .inherit_stdio()
             .inherit_args()?
-            .inherit_env()?;
+            .inherit_env()?
+            .preopened_dir(Dir::from_std_file(task_dir_path), "/var/task")?
+            .preopened_dir(Dir::from_std_file(temp_dir_path), "/tmp")?;
         ctx.wasi = Some(wasi_ctx.build());
         let http_ctx = HttpCtx {
             allowed_hosts: self.config.allowed_hosts.to_owned(),

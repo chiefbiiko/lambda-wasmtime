@@ -87,10 +87,14 @@ impl LambdaFunction {
                 max_concurrent_requests = Some(value.parse().unwrap())
             }
         }
-        let source = format!("{}/{}.wasm", task_root.unwrap(), handler_file.unwrap());
+        let task_directory = task_root.unwrap();
+        let source = format!("{}/{}.wasm", task_directory, handler_file.unwrap());
+        let temp_directory = String::from("/tmp");
 
         Ok(ExecutionContextConfiguration {
             id: String::from("Lambda"),
+            task_directory,
+            temp_directory,
             source,
             allowed_hosts,
             max_concurrent_requests,
