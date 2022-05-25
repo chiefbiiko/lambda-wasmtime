@@ -20,7 +20,6 @@ impl lambda::Lambda for Lambda {
         let future = async move {
             println!("future starting...");
             work().await;
-            sleep(Duration::from_millis(1000));
 
             let task_root = env::vars()
                 .find_map(|(key, value)| {

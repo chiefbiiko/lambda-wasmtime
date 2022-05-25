@@ -12,12 +12,12 @@ serde_json = "1"
 tokio = { version = "1.4", features = [ "full" ] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-wasmtime = "0.34"
-wasmtime-wasi = "0.34"
-wasi-common = "0.34"
-wasi-cap-std-sync = "0.34"
-wasi-experimental-http-wasmtime = { git = "https://github.com/deislabs/wasi-experimental-http", rev = "a4e1ee14a1f2d520289185537c64c315c87c1836" }
-wit-bindgen-wasmtime = { git = "https://github.com/bytecodealliance/wit-bindgen", rev = "d086240c74eabae6f225c90c74d705fe10f2d8dc" }
+wasmtime = "0.35"
+wasmtime-wasi = "0.35"
+wasi-common = "0.35"
+wasi-cap-std-sync = "0.35"
+wasi-experimental-http-wasmtime = { git = "https://github.com/Mossaka/wasi-experimental-http", rev = "82edced8fdb0d7fd50631d011127e02a875102fb" }
+wit-bindgen-wasmtime = { git = "https://github.com/bytecodealliance/wit-bindgen", rev = "a79a4be33d76ddf62839ba71602c26a96610ef7c" }
 
 [workspace]
     members = [
