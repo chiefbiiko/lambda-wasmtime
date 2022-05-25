@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use anyhow::{Context, Error, Result};
 use tracing::{instrument, log};
-use wasi_cap_std_sync::WasiCtxBuilder;
 use wasi_experimental_http_wasmtime::{HttpCtx, HttpState};
 use wasmtime::{Instance, InstancePre, Linker, Store};
 use wasmtime_wasi::*;
