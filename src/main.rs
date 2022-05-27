@@ -42,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
             )
             .expect("runtime failed to retrieve handler")
         {
-            Ok(output) => serde_json::from_str(output.as_str()).unwrap(),
+            Ok(output) => serde_json::from_str(output.unwrap().as_str()).unwrap(),
             Err(_error) => serde_json::json!("error"),
         };
         log::info!("JSON response: {:?}", resp);

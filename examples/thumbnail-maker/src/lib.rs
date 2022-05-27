@@ -9,10 +9,10 @@ wit_bindgen_rust::export!("../../lambda.wit");
 struct Lambda {}
 
 impl lambda::Lambda for Lambda {
-    fn handler(event: Event, _context: Option<Context>) -> Result<Output, Error> {
+    fn handler(event: Event, _context: Option<Context>) -> Result<Option<Output>, Error> {
         Ok(match process(event.as_str(), Vec::new()) {
-            Ok(thumbnail_buf) => format!("{{\"data\":\"{}\"}}", to_base64(&thumbnail_buf)),
-            _ => "{\"error\":\"processing failed\"}".to_string(),
+            Ok(thumbnail_buf) => Some(format!("{{\"data\":\"{}\"}}", to_base64(&thumbnail_buf))),
+            _ => Some("{\"error\":\"processing failed\"}".to_string()),
         })
     }
 }
@@ -21,9 +21,9 @@ fn process(event: &str, mut thumbnail_buf: Vec<u8>) -> AnyhowResult<Vec<u8>> {
     load_image_from_memory(&from_base64(
         from_json::<Value>(event)?
             .get("data")
-            .ok_or(anyhow!("missing property \"data\""))?
+            .ok_or_else(|| anyhow!("missing property \"data\"")).unwrap()
             .as_str()
-            .ok_or(anyhow!("invalid string"))?,
+            .ok_or_else(|| anyhow!("invalid string")).unwrap(),
     )?)?
     .thumbnail(128, 128)
     .write_to(&mut thumbnail_buf, PNG)?;

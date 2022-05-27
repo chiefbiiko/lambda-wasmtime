@@ -81,4 +81,4 @@ type event = string
 type output = string
 type context = string
 
-handler: function(event: event, context: option<context>) -> expected<output, error>
+handler: function(event: event, context: option<context>) -> expected<option<output>, error>

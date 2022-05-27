@@ -11,7 +11,7 @@ wit_bindgen_rust::export!("../../lambda.wit");
 struct Lambda {}
 
 impl lambda::Lambda for Lambda {
-    fn handler(event: Event, context: Option<Context>) -> Result<Output, Error> {
+    fn handler(event: Event, context: Option<Context>) -> Result<Option<Output>, Error> {
         let event_json = from_json::<Value>(event.as_str()).unwrap();
         println!("Event payload: {:?}", event_json);
         let context_json = from_json::<Value>(context.unwrap().as_str()).unwrap();
@@ -64,9 +64,9 @@ impl lambda::Lambda for Lambda {
             );
             let status_code = res.status_code;
             println!("Status code: {:#?}", status_code);
-            Ok(str)
+            Ok(Some(str))
         };
-        let res: Result<Output, Error> = tokio::runtime::Builder::new_current_thread()
+        let res: Result<Option<Output>, Error> = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .unwrap()
