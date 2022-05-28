@@ -1,0 +1,40 @@
+[package]
+name = "lambda-wasmtime"
+version = "0.1.0"
+authors = ["Eduardo Rodrigues <eduardomourar@users.noreply.github.com>"]
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+lambda_runtime = "0.5"
+openssl = { version = "0.10", features = ["vendored"] }
+serde_json = "1"
+tokio = { version = "1.4", features = [ "full" ] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+wasi-common = "0.35"
+wasi-experimental-http-wasmtime = { git = "https://github.com/Mossaka/wasi-experimental-http", rev = "82edced8fdb0d7fd50631d011127e02a875102fb" }
+wasmtime = "0.35"
+wasmtime-wasi = { version = "0.35", default-features = false, features = [ "tokio" ] }
+wit-bindgen-wasmtime = { git = "https://github.com/bytecodealliance/wit-bindgen", rev = "a79a4be33d76ddf62839ba71602c26a96610ef7c" }
+
+[workspace]
+    members = [
+        "examples/http-rust",
+        "examples/thumbnail-maker"
+    ]
+
+[[bin]]
+name = "bootstrap"
+path = "src/main.rs"
+
+[features]
+
+[package.metadata.lambda.env]
+RUST_LOG = "debug"
+
+[package.metadata]
+wasm-opt = true
+
+[profile.release]
+lto = true

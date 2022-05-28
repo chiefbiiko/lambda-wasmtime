@@ -1,0 +1,16 @@
+[package]
+name = "handler"
+version = "0.1.0"
+authors = ["Eduardo Rodrigues <eduardomourar@users.noreply.github.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ['cdylib']
+
+[dependencies]
+bytes = "1"
+http  = "0.2"
+serde_json = "1"
+tokio = { version = "1.18", default-features = false, features = [ "rt" ] }
+wasi-experimental-http = { git = "https://github.com/Mossaka/wasi-experimental-http", rev = "82edced8fdb0d7fd50631d011127e02a875102fb" }
+wit-bindgen-rust = { git = "https://github.com/bytecodealliance/wit-bindgen", rev = "a79a4be33d76ddf62839ba71602c26a96610ef7c" }
